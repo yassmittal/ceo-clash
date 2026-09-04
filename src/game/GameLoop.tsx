@@ -214,7 +214,9 @@ function applyVisuals(f: FighterRuntime) {
   if (f.visual) f.visual.rotation.y = f.facing;
   const materials = f.rigMaterials;
   if (materials) {
-    const intensity = f.flash > 0 ? f.flash * 4 : 0;
+    // Textured models wash out fast — the flat-shaded placeholder rig could take
+    // a much stronger push than a textured GLB can.
+    const intensity = f.flash > 0 ? f.flash * 0.28 : 0;
     for (const m of materials) {
       const base = m.userData.baseEmissive as THREE.Color | undefined;
       if (base) m.emissive.copy(base).addScalar(intensity);

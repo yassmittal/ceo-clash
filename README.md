@@ -16,6 +16,8 @@ bun run dev        # http://localhost:5173
 bun run build      # typecheck + production bundle
 bun run sim        # headless fight simulation (see "Verification")
 bun run balance    # match-length and win-rate report
+bun run characters # generate + rig + optimise the fighter models (needs TRIPO_API_KEY)
+bun run sounds     # pull CC0 sound effects from Freesound (needs FREESOUND_CLIENT_SECRET)
 ```
 
 ## Controls
@@ -99,32 +101,79 @@ Hit detection is a sphere in front of the chest, active only during a move's
 active frames, tested against a vertical capsule hurtbox. Deterministic and
 tunable, which is what a fighting game needs; per-bone collision is not.
 
-## The characters, and swapping in real models
+## The characters
 
-The fighters are a **procedurally built humanoid rig**: a real bone hierarchy
-(`characters/rig/bones.ts`, named to match Mixamo minus the `mixamorig:` prefix)
-with chunky body-part meshes parented to the bones, animated by twelve
-hand-authored `AnimationClip`s (`characters/animations/clips.ts`).
+The fighters are original stylised parody characters — tech-CEO archetypes, not
+likenesses of anyone — generated and rigged entirely through the API:
 
-This is the plan's Phase 2 placeholder taken as far as it is useful — and it means
-Phase 9 is a drop-in rather than a rewrite:
+```
+text prompt -> Tripo text-to-3D -> Tripo auto-rig -> gltf-transform -> public/models/*.glb
+      (20 credits)                   (25 credits)      (local, free)
+```
 
-1. Generate/clean/rig the model (Tripo → Blender → Mixamo), export GLB with the
-   clips named `IDLE`, `WALK`, `RUN`, `PUNCH`, `KICK`, `BLOCK`, `HIT`,
-   `KNOCKDOWN`, `GET_UP`, `VICTORY`, `DEFEAT`, `SPECIAL`.
-2. In `characters/Fighter.tsx`, replace `buildRig()` / `buildClips()` with
-   `useGLTF` and the GLB's own `animations`.
-3. Match the clip lengths to the frame data in `combat/moves.ts` (punch 0.35s with
-   impact at ~0.13s, kick 0.65s at ~0.24s, special 1.12s at ~0.42s) — or scale
-   them with `Animator.play({ timeScale })`.
+`bun run characters build all` runs the whole thing and caches every stage in
+`assets/source/manifest.json`, so a re-run only redoes what is missing. Prompts
+live at the top of `scripts/characters.ts`.
 
-Nothing else changes. `Animator`, the state machine, combat, AI and camera are all
-model-agnostic.
+**No Blender and no Mixamo.** The original plan routed the whole asset pipeline
+through both; neither turned out to be necessary. Tripo's auto-rigger emits a
+Mixamo-*spec* skeleton (`mixamorig:Hips`, `mixamorig:LeftArm`, …), which is
+exactly what the placeholder rig was named to match, so the twelve hand-authored
+clips drive the generated models directly. Mesh cleanup that would have been
+Blender work is `@gltf-transform` running headlessly.
 
-Sound is synthesised rather than sampled for the same reason: it loads instantly,
-weighs nothing, and every impact is pitch-randomised so twenty punches do not sound
-like one looping sample. Swapping in recordings means replacing the method bodies
-in `audio/AudioManager.ts`.
+### Retargeting
+
+The clips are authored against the placeholder rig and replayed on an imported
+skeleton, which needs three corrections — all computed once at load, in
+`rig/retarget.ts` and `rig/gltfRig.ts`:
+
+| Problem | Fix |
+|---|---|
+| Placeholder has identity rest rotations; a Mixamo rig encodes its T-pose in them | Conjugate each clip value into the target bone's parent frame: `P⁻¹ · q · A · P · rest` |
+| Placeholder stands arms-down, the import stands in a T-pose | `A`, a per-bone rest correction (only the upper arms need one) |
+| Generated characters are chibi — hips at 0.66m, not 0.95m | Scale hip root motion by the ratio of hip heights, and rotate it into the target's frame (this skeleton is Z-up internally) |
+
+Facing is measured from the skeleton rather than assumed: the foot→toe vector is
+the character's forward direction, and the model is yawed until it points +Z.
+
+If a fighter ever moonwalks, faces backwards, sinks through the floor, or holds
+its arms out sideways, it is one of the rows in that table.
+
+### Bringing your own model
+
+```
+bun run characters import <file.glb> <id>     # e.g. ... import ~/Downloads/ceo.glb sam
+```
+
+This validates the export, optimises it, and installs it. Replacing `sam` or
+`dario` needs no code change at all.
+
+The export has to satisfy four things, and `import` names whichever one fails
+rather than installing a model that silently will not animate:
+
+| Requirement | Why |
+|---|---|
+| **`.glb`** (glTF Binary) | One file, textures embedded. Not FBX, OBJ, or glTF+bin |
+| **Rigged** | The most common mistake. A plain text-to-3D or image-to-3D result is a *static mesh* with no skeleton, and cannot animate. In Tripo, run it through Animation / Rigging first |
+| **Mixamo skeleton** | The clips drive 19 named bones. Lookup is normalised, so `mixamorig:Hips`, `mixamorigHips` and `Hips` all resolve |
+| **T-pose** | Arms straight out to the sides. The retargeter corrects from a T-pose; an A-pose export animates with its arms wrong |
+
+Don't pre-optimise or decimate the export — hand over the raw rigged GLB. The
+pipeline knows the ratio that keeps skinning intact (below roughly 0.1 it breaks,
+invisibly, until the model animates).
+
+A brand-new fighter also needs a character definition — stats, colours, taglines
+— and `import` prints the three steps. The placeholder rig stays in the tree as
+the Suspense fallback, so the arena is never empty while a model streams in.
+
+## Sound
+
+19 CC0 clips from Freesound in `public/sounds/`, fetched by `bun run sounds`,
+with several variants of each impact cycled and pitch-randomised per hit. Every
+sound falls back to its synthesised version if the pack is missing, still
+loading, or fails to decode — the game is never silent. `CREDITS.md` there lists
+every source.
 
 ## Verification
 
@@ -175,6 +224,11 @@ shoving each other apart. Knockback, hit detection, arena bounds and all movemen
 are already handled in game code. If load time ever matters more than the stack
 choice, replacing Rapier with ~50 lines of capsule-vs-capsule separation would cut
 the download by roughly 80% and change nothing the player can see.
+
+## What's left
+
+See [HANDOFF.md](HANDOFF.md) — what still needs doing, what needs an account or a
+key, and what can be done without either.
 
 ## What is deliberately not here
 

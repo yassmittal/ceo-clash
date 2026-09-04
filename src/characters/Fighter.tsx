@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useGLTF } from "@react-three/drei";
 import { CapsuleCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
-import { buildRig, disposeRig } from "./rig/buildRig";
+import { buildRig, disposeRig, type Rig } from "./rig/buildRig";
+import { buildGltfRig, modelPath } from "./rig/gltfRig";
 import { buildClips } from "./animations/clips";
 import { Animator } from "./animations/Animator";
 import type { FighterRuntime } from "@/game/runtime";
@@ -16,15 +18,26 @@ import { COMBAT } from "@/combat/moves";
  * driven by the single director loop in GameLoop.tsx, which keeps simulation
  * order deterministic.
  */
-export function Fighter({ runtime }: { runtime: FighterRuntime }) {
-  const bodyRef = useRef<RapierRigidBody>(null);
-  const visualRef = useRef<THREE.Group>(null);
+/**
+ * Builds the fighter's visual rig — a generated GLB when one has been produced,
+ * otherwise the procedural placeholder. Both return the same shape, and the
+ * animation clips are the same twelve either way: for the GLB they are
+ * retargeted onto its Mixamo-spec skeleton at load time.
+ */
+function useFighterRig(runtime: FighterRuntime, gltf: ReturnType<typeof useGLTF> | null) {
+  return useMemo(() => {
+    const clips = buildClips(runtime.def);
+    if (gltf) {
+      const rig = buildGltfRig(gltf as never, clips, runtime.def);
+      return { rig: rig as unknown as Rig, clips: rig.clips };
+    }
+    return { rig: buildRig(runtime.def), clips };
+  }, [runtime.def, gltf]);
+}
 
-  const rig = useMemo(() => buildRig(runtime.def), [runtime.def]);
-  const animator = useMemo(
-    () => new Animator(rig.root, buildClips(runtime.def)),
-    [rig, runtime.def],
-  );
+function FighterRig({ runtime, gltf }: { runtime: FighterRuntime; gltf: ReturnType<typeof useGLTF> | null }) {
+  const { rig, clips } = useFighterRig(runtime, gltf);
+  const animator = useMemo(() => new Animator(rig.root, clips), [rig, clips]);
 
   useEffect(() => {
     runtime.animator = animator;
@@ -36,6 +49,19 @@ export function Fighter({ runtime }: { runtime: FighterRuntime }) {
       runtime.rigMaterials = null;
     };
   }, [animator, rig, runtime]);
+
+  return <primitive object={rig.root} />;
+}
+
+/** Loads the GLB for this character, suspending until it is ready. */
+function GltfRigLoader({ runtime }: { runtime: FighterRuntime }) {
+  const gltf = useGLTF(modelPath(runtime.def.id));
+  return <FighterRig runtime={runtime} gltf={gltf} />;
+}
+
+export function Fighter({ runtime, useModel = true }: { runtime: FighterRuntime; useModel?: boolean }) {
+  const bodyRef = useRef<RapierRigidBody>(null);
+  const visualRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
     runtime.body = bodyRef.current;
@@ -69,7 +95,15 @@ export function Fighter({ runtime }: { runtime: FighterRuntime }) {
       <CapsuleCollider args={[0.5, COMBAT.bodyRadius]} />
       {/* Feet sit 0.9m below the capsule centre. */}
       <group ref={visualRef} position={[0, -0.9, 0]}>
-        <primitive object={rig.root} />
+        {useModel ? (
+          // While the GLB streams in, the placeholder stands in — the fight is
+          // already running behind the menu, so it must never be empty.
+          <Suspense fallback={<FighterRig runtime={runtime} gltf={null} />}>
+            <GltfRigLoader runtime={runtime} />
+          </Suspense>
+        ) : (
+          <FighterRig runtime={runtime} gltf={null} />
+        )}
         {/* Contact shadow stand-in — cheap and keeps the fighter grounded. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <circleGeometry args={[0.42, 20]} />
@@ -79,3 +113,6 @@ export function Fighter({ runtime }: { runtime: FighterRuntime }) {
     </RigidBody>
   );
 }
+
+useGLTF.preload("/models/sam.glb");
+useGLTF.preload("/models/dario.glb");

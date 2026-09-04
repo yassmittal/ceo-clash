@@ -1,16 +1,22 @@
 /**
- * All sound is synthesised with the Web Audio API.
+ * Sound is sampled where samples exist and synthesised where they do not.
  *
- * The MVP ships no audio files on purpose: procedural hits load instantly, weigh
- * nothing, and can be pitch-randomised per impact so twenty punches in a row do
- * not sound like one sample looping. Swapping in real recordings later means
- * replacing the bodies of these methods.
+ * `public/sounds/` is populated by `bun run sounds` (CC0 clips from Freesound).
+ * Every sample is pitch- and gain-randomised per impact, and several variants of
+ * each sound are cycled, so twenty punches in a row do not sound like one clip
+ * looping. If the files are missing — or decoding fails, or the fetch is still in
+ * flight during the first fight — each method falls back to the synthesised
+ * version, so the game is never silent.
  */
+type SampleName = "whoosh" | "hit" | "heavy" | "block" | "knockdown" | "special" | "ko";
+
 class AudioManager {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   private muted = false;
+  private samples = new Map<SampleName, AudioBuffer[]>();
+  private loading = false;
 
   /** Must be called from a user gesture (the Play button). */
   unlock() {
@@ -32,6 +38,53 @@ class AudioManager {
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     this.noise = buffer;
+
+    void this.loadSamples();
+  }
+
+  /** Fetches and decodes the sound pack. Failures are silent by design. */
+  private async loadSamples() {
+    if (this.loading || !this.ctx) return;
+    this.loading = true;
+    try {
+      const res = await fetch("/sounds/manifest.json");
+      if (!res.ok) return;
+      const manifest = (await res.json()) as Record<string, number>;
+      await Promise.all(
+        Object.entries(manifest).map(async ([name, count]) => {
+          const buffers: AudioBuffer[] = [];
+          for (let i = 1; i <= count; i++) {
+            try {
+              const r = await fetch(`/sounds/${name}-${i}.mp3`);
+              if (!r.ok) continue;
+              buffers.push(await this.ctx!.decodeAudioData(await r.arrayBuffer()));
+            } catch {
+              /* one bad file should not take out the pack */
+            }
+          }
+          if (buffers.length) this.samples.set(name as SampleName, buffers);
+        }),
+      );
+    } catch {
+      /* offline or missing pack: the synthesised fallbacks cover everything */
+    }
+  }
+
+  /**
+   * Plays a random variant, detuned and re-levelled a little each time.
+   * Returns false when no sample is loaded, so callers can synthesise instead.
+   */
+  private sample(name: SampleName, gain = 1, spread = 0.16): boolean {
+    const bank = this.samples.get(name);
+    if (!bank || bank.length === 0 || !this.ctx || !this.master || this.muted) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = bank[(Math.random() * bank.length) | 0];
+    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * spread;
+    const g = this.ctx.createGain();
+    g.gain.value = gain * (0.85 + Math.random() * 0.3);
+    src.connect(g).connect(this.master);
+    src.start();
+    return true;
   }
 
   setMuted(muted: boolean) {
@@ -94,32 +147,38 @@ class AudioManager {
   }
 
   whoosh() {
+    if (this.sample("whoosh", 0.5, 0.22)) return;
     this.burst(0.16, 0.16, 1600, 320, 1.4);
   }
 
   hit(power = 1) {
+    if (this.sample("hit", 0.9)) return;
     const p = Math.min(2, power);
     this.burst(0.12 + p * 0.05, 0.4, 2200 * (0.8 + Math.random() * 0.4), 260, 0.9);
     this.tone(190 * (0.9 + Math.random() * 0.2), 48, 0.18 + p * 0.1, 0.5, "sine");
   }
 
   heavy() {
+    if (this.sample("heavy", 1)) return;
     this.burst(0.3, 0.5, 1400, 120, 0.7);
     this.tone(120, 34, 0.45, 0.7, "sine");
     this.tone(300, 80, 0.25, 0.25, "sawtooth", 0.01);
   }
 
   block() {
+    if (this.sample("block", 0.7)) return;
     this.burst(0.09, 0.3, 3600, 1200, 3);
     this.tone(880, 620, 0.09, 0.18, "square");
   }
 
   special() {
+    if (this.sample("special", 0.9, 0.08)) return;
     this.tone(120, 900, 0.45, 0.3, "sawtooth");
     this.burst(0.5, 0.28, 400, 4000, 1.2);
   }
 
   ko() {
+    if (this.sample("ko", 1, 0.06)) return;
     this.tone(320, 40, 0.9, 0.8, "sawtooth");
     this.burst(0.8, 0.55, 900, 80, 0.5);
     this.tone(60, 28, 1.4, 0.6, "sine", 0.05);
@@ -134,6 +193,7 @@ class AudioManager {
   }
 
   knockdown() {
+    if (this.sample("knockdown", 0.9)) return;
     this.burst(0.4, 0.4, 700, 90, 0.6);
     this.tone(90, 40, 0.5, 0.5, "sine");
   }

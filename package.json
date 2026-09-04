@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "sim": "bun run scripts/simulate.ts",
-    "balance": "bun run scripts/balance.ts"
+    "balance": "bun run scripts/balance.ts",
+    "characters": "bun run scripts/characters.ts",
+    "sounds": "bun run scripts/sounds.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.3",
@@ -21,10 +23,15 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.169.0",
     "@vitejs/plugin-react": "^4.3.3",
+    "meshoptimizer": "^1.2.0",
+    "sharp": "^0.35.4",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   }
