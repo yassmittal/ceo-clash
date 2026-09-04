@@ -121,6 +121,36 @@ Phase 9 is a drop-in rather than a rewrite:
 Nothing else changes. `Animator`, the state machine, combat, AI and camera are all
 model-agnostic.
 
+### The faces
+
+The heads are the one part of a fighter that is not procedural. Each wears a
+512² texture cropped from a freely-licensed press photograph — Sam Altman by
+Steve Jurvetson, Dario Amodei by TechCrunch, both **CC BY 2.0** from Wikimedia
+Commons. `scripts/build-faces.py` downloads the originals, cuts them to the
+crop boxes recorded in that file, grades them so two photos shot in two
+different rooms look like one game, and writes `public/faces/`:
+
+```bash
+python3 scripts/build-faces.py     # needs Pillow; re-run after changing a crop
+```
+
+It also prints the skin and hair tones it sampled off each finished face, which
+are the hex values in `characters/Sam.ts` and `characters/Dario.ts` — that is
+what keeps a fighter's neck and forearms matching their own head rather than a
+guessed swatch.
+
+The texture is mapped onto the **left and right** faces of the head block, not
+the front. The arena camera is always perpendicular to the line between the
+fighters, so a fighter squared up to their opponent shows the player their
+profile; a front-mounted face would never be on screen. Front and back stay
+hair, so turning through a corner reads as a head turning away instead of
+flashing two complete faces at once.
+
+The licence is the constraint to respect if you touch any of this: CC BY allows
+the crop, the grade and commercial use, but the attribution has to travel with
+the game. It is in `public/faces/CREDITS.md` and, more importantly, on the main
+menu.
+
 Sound is synthesised rather than sampled for the same reason: it loads instantly,
 weighs nothing, and every impact is pitch-randomised so twenty punches do not sound
 like one looping sample. Swapping in recordings means replacing the method bodies

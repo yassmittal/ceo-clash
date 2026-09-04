@@ -2,6 +2,7 @@ import { CHARACTER_LIST } from "@/characters";
 import type { CharacterDef } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import { audio } from "@/audio/AudioManager";
+import { Portrait } from "@/components/UI/Portrait";
 
 const STAT_KEYS = ["speed", "attack", "defense", "aggression"] as const;
 
@@ -19,6 +20,8 @@ function Card({ def, onSelect }: { def: CharacterDef; onSelect: () => void }) {
         }
       }}
     >
+      <Portrait def={def} />
+
       <div>
         <div className="role">{def.title}</div>
         <h2 style={{ color: def.colors.primary }}>{def.name}</h2>

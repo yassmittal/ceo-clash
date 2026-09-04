@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { BONE_NAMES, BONE_OFFSETS, BONE_PARENTS, type BoneName } from "./bones";
+import { faceTexture } from "./faces";
 import type { CharacterDef } from "@/game/types";
 
 /**
@@ -73,11 +74,27 @@ export function buildRig(def: CharacterDef): Rig {
   const pants = mat(def.colors.secondary);
   const accent = mat(def.colors.accent, { roughness: 0.3, metalness: 0.25 });
   const dark = mat("#1a1d24");
+  const hair = mat(def.colors.hair, { roughness: 0.7, metalness: 0 });
+  // The face is a photo, so the base colour has to be white — anything else
+  // tints the picture. Most of what you see is the emissive copy of the map
+  // rather than the lit one: the arena's ambient is a strong blue, and a purely
+  // lit face comes out grey and unrecognisable at the size a head occupies on
+  // screen. Carrying its own light keeps the photo looking like the photo.
+  const faceMap = faceTexture(def.id);
+  const face = mat("#ffffff", {
+    map: faceMap,
+    emissive: new THREE.Color(0.55, 0.55, 0.55),
+    emissiveMap: faceMap,
+    roughness: 0.62,
+    metalness: 0,
+  });
 
   const attach = (
     bone: BoneName,
     geo: THREE.BufferGeometry,
-    material: THREE.Material,
+    // An array is one material per box face, in three's order:
+    // [+x, -x, +y, -y, +z, -z] — right, left, top, bottom, front, back.
+    material: THREE.Material | THREE.Material[],
     pos: [number, number, number] = [0, 0, 0],
     rot: [number, number, number] = [0, 0, 0],
   ) => {
@@ -98,28 +115,25 @@ export function buildRig(def: CharacterDef): Rig {
   attach("Neck", box(0.15, 0.1, 0.15), skin, [0, 0.03, 0]);
 
   // --- head: intentionally oversized, this is a brainrot game -------------
-  attach("Head", box(0.44, 0.42, 0.4), skin, [0, 0.2, 0]);
-  // hair / cap
-  attach(
-    "Head",
-    box(0.47, 0.13, 0.43),
-    mat(def.id === "sam" ? "#6b5442" : "#2f2a28"),
-    [0, 0.4, 0],
-  );
-  // eyes
-  const eyeGeo = new THREE.SphereGeometry(0.045, 10, 8);
-  disposables.push(eyeGeo);
-  for (const x of [0.1, -0.1]) {
-    const eye = new THREE.Mesh(eyeGeo, dark);
-    eye.position.set(x, 0.24, 0.2);
-    bones.Head.add(eye);
-  }
-  // mouth
-  attach("Head", box(0.16, 0.035, 0.02), dark, [0, 0.1, 0.205]);
-  if (def.id === "dario") {
-    // glasses, so the two silhouettes read differently at a glance
-    attach("Head", box(0.34, 0.03, 0.03), dark, [0, 0.27, 0.21]);
-  }
+  // The head block wears the fighter's actual (cropped) face, which is why
+  // there are no eye, mouth or glasses meshes any more — the photo brings its
+  // own, already wearing the right expression.
+  //
+  // It goes on the two *side* faces rather than the front, which is deliberate:
+  // the arena camera always sits perpendicular to the line between the fighters
+  // (see updateCamera), so a fighter squared up to their opponent presents
+  // their profile to the player and a front-mounted face would never once be
+  // visible during a match. Putting it on the sides is the trick a Minecraft
+  // skin plays, and at this level of blockiness it reads as a joke rather than
+  // a mistake.
+  //
+  // The front and back stay hair on purpose. Covering them too would mean that
+  // every time a fighter turned through a corner you would catch two complete
+  // faces on one head; leaving them dark makes the same moment read as a head
+  // turning away, which is what is actually happening.
+  attach("Head", box(0.44, 0.42, 0.4), [face, face, hair, skin, hair, hair], [0, 0.2, 0]);
+  // hair / cap, sitting proud of the block so it hides the top edge of the photo
+  attach("Head", box(0.47, 0.13, 0.43), hair, [0, 0.4, 0]);
 
   // --- arms --------------------------------------------------------------
   for (const s of ["Left", "Right"] as const) {

@@ -186,6 +186,65 @@ button { font-family: inherit; cursor: pointer; }
 .card--sam:hover, .card--sam:focus-visible { border-color: var(--sam); box-shadow: 0 18px 60px rgba(31,140,255,.35); }
 .card--dario:hover, .card--dario:focus-visible { border-color: var(--dario); box-shadow: 0 18px 60px rgba(255,122,69,.35); }
 
+/* The face photo, shared by the select cards and the winner screen. The wash
+   and the scanlines are what stop it reading as a stock headshot dropped into
+   an arcade UI. */
+.portrait {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  background: #05060f;
+  flex: none;
+}
+.portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Framed on the eyes rather than the centre of the crop. */
+  object-position: 50% 34%;
+  filter: contrast(1.08) saturate(0.92) brightness(1.02);
+}
+.portrait-wash {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: overlay;
+  opacity: 0.34;
+  pointer-events: none;
+}
+.portrait-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.24) 0 1px,
+    transparent 1px 3px
+  );
+}
+.portrait::after {
+  /* Vignette, so the photo's own background falls away into the card. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 -32px 44px -18px rgba(4, 5, 14, 0.95),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.portrait--card { aspect-ratio: 5 / 4; }
+.portrait--hero {
+  width: clamp(96px, 22vw, 148px);
+  aspect-ratio: 1 / 1;
+  border-width: 3px;
+  animation: slam 0.5s cubic-bezier(0.15, 1.4, 0.3, 1);
+}
+.portrait--sam { box-shadow: 0 10px 34px rgba(31, 140, 255, 0.28); }
+.portrait--dario { box-shadow: 0 10px 34px rgba(255, 122, 69, 0.28); }
+.card:hover .portrait img, .card:focus-visible .portrait img {
+  filter: contrast(1.14) saturate(1.05) brightness(1.08);
+}
+
 .card h2 {
   margin: 0;
   font-size: clamp(1.6rem, 4vw, 2.6rem);
@@ -213,6 +272,9 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: 0.12em;
   color: var(--amber);
 }
+
+.disclaimer a { color: rgba(255,255,255,.55); }
+.disclaimer a:hover { color: var(--cyan); }
 
 .stat { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: 0.6rem; }
 .stat span {
@@ -448,6 +510,7 @@ button { font-family: inherit; cursor: pointer; }
 .disclaimer {
   position: absolute;
   bottom: 0.7rem;
+  line-height: 1.9;
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--mono);

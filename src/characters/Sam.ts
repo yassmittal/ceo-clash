@@ -17,7 +17,8 @@ export const SAM: CharacterDef = {
   colors: {
     primary: "#1f8cff",
     secondary: "#0b2a4a",
-    skin: "#e6b58e",
+    skin: "#ec9e7e",
+    hair: "#412b16",
     accent: "#7ee0ff",
   },
   koLines: [

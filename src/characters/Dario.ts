@@ -17,7 +17,8 @@ export const DARIO: CharacterDef = {
   colors: {
     primary: "#ff7a45",
     secondary: "#4a1f0b",
-    skin: "#d9a982",
+    skin: "#ce9f99",
+    hair: "#383028",
     accent: "#ffd18c",
   },
   koLines: [

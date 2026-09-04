@@ -5,3 +5,6 @@ dist/
 .DS_Store
 tsconfig.tsbuildinfo
 private.md
+.env
+# generated 3D source files (large; regenerate with bun run scripts/)
+assets/source/

@@ -121,7 +121,11 @@ export interface CharacterDef {
   colors: {
     primary: string;
     secondary: string;
+    /** Skin and hair are sampled from the fighter's face photo by
+     *  scripts/build-faces.py, so the head block matches the neck and forearms
+     *  instead of sitting on top of them like a sticker. */
     skin: string;
+    hair: string;
     accent: string;
   };
   /** Silly lines shown when this character lands a KO. */

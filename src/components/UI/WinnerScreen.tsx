@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { CHARACTERS } from "@/characters";
 import { useGameStore } from "@/state/gameStore";
 import { audio } from "@/audio/AudioManager";
+import { Portrait } from "./Portrait";
 
 export function WinnerScreen() {
   const winner = useGameStore((s) => s.winner);
@@ -30,6 +31,7 @@ export function WinnerScreen() {
 
   return (
     <div className="screen winner">
+      <Portrait def={def} size="hero" />
       <h1 className="winner-name" style={{ color: def.colors.primary }}>
         {def.name} WINS
       </h1>
