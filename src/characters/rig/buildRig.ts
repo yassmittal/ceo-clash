@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { BONE_NAMES, BONE_OFFSETS, BONE_PARENTS, type BoneName } from "./bones";
 import { faceTexture } from "./faces";
+import { loadHead } from "./heads";
 import type { CharacterDef } from "@/game/types";
 
 /**
@@ -24,9 +25,25 @@ export interface Rig {
   disposables: Array<THREE.BufferGeometry | THREE.Material>;
   /** The head bone, handy for effects. */
   head: THREE.Bone;
+  /** Cleared by disposeRig. The 3D head arrives asynchronously and must not
+   *  attach itself to a rig that has already been torn down. */
+  alive: { value: boolean };
 }
 
 const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+
+/**
+ * How the 3D head is fitted to the skeleton.
+ *
+ * The model is one unit tall from the base of its neck stub to the crown, so
+ * HEAD_HEIGHT is that whole span in metres and HEAD_DROP lowers the stub below
+ * the Head bone until it disappears into the top of the chest block (which ends
+ * at y=1.56, with the Head bone at y=1.58). Slightly larger than an anatomical
+ * head against this body on purpose — the blocky fighters were always
+ * caricatures and a correctly-scaled head reads as a pinhead on them.
+ */
+const HEAD_HEIGHT = 0.6;
+const HEAD_DROP = -0.08;
 
 function limb(radius: number, length: number) {
   return new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 4, 10);
@@ -114,26 +131,53 @@ export function buildRig(def: CharacterDef): Rig {
   attach("Chest", box(0.54, 0.1, 0.36), accent, [0, -0.1, 0]); // belt-ish trim
   attach("Neck", box(0.15, 0.1, 0.15), skin, [0, 0.03, 0]);
 
-  // --- head: intentionally oversized, this is a brainrot game -------------
-  // The head block wears the fighter's actual (cropped) face, which is why
-  // there are no eye, mouth or glasses meshes any more — the photo brings its
-  // own, already wearing the right expression.
+  // --- head ---------------------------------------------------------------
+  // The real head is a photogrammetric model loaded asynchronously (see
+  // heads.ts). Until it lands — and permanently, if the file is missing — the
+  // fighter wears this blocky stand-in instead: the same face photo mapped onto
+  // the two *side* faces of a box.
   //
-  // It goes on the two *side* faces rather than the front, which is deliberate:
-  // the arena camera always sits perpendicular to the line between the fighters
-  // (see updateCamera), so a fighter squared up to their opponent presents
-  // their profile to the player and a front-mounted face would never once be
-  // visible during a match. Putting it on the sides is the trick a Minecraft
-  // skin plays, and at this level of blockiness it reads as a joke rather than
-  // a mistake.
-  //
-  // The front and back stay hair on purpose. Covering them too would mean that
-  // every time a fighter turned through a corner you would catch two complete
-  // faces on one head; leaving them dark makes the same moment read as a head
-  // turning away, which is what is actually happening.
-  attach("Head", box(0.44, 0.42, 0.4), [face, face, hair, skin, hair, hair], [0, 0.2, 0]);
-  // hair / cap, sitting proud of the block so it hides the top edge of the photo
-  attach("Head", box(0.47, 0.13, 0.43), hair, [0, 0.4, 0]);
+  // The sides, not the front, because the arena camera always sits
+  // perpendicular to the line between the fighters (see updateCamera), so a
+  // fighter squared up to their opponent shows the player their profile and a
+  // front-mounted face would never once be visible. Front and back stay hair,
+  // which makes turning through a corner read as a head turning away rather
+  // than flashing two complete faces at once.
+  const blockHead = attach(
+    "Head",
+    box(0.44, 0.42, 0.4),
+    [face, face, hair, skin, hair, hair],
+    [0, 0.2, 0],
+  );
+  const blockHair = attach("Head", box(0.47, 0.13, 0.43), hair, [0, 0.4, 0]);
+
+  const alive = { value: true };
+  void loadHead(def.id).then((model) => {
+    if (!model || !alive.value) return;
+
+    // White base colour, and most of what you see is the emissive copy of the
+    // map: the arena ambient is a strong blue and a purely lit head comes out
+    // grey and unrecognisable, which defeats the entire point of having one.
+    const headMat = mat("#ffffff", {
+      map: model.texture,
+      emissive: new THREE.Color(0.6, 0.6, 0.6),
+      emissiveMap: model.texture,
+      roughness: 0.8,
+      metalness: 0,
+    });
+    // mat() has already registered headMat for the hit flash and for disposal.
+    // The geometry deliberately is not registered: it is shared with every
+    // other rig that ever wears this head, and disposing it here would leave
+    // the next match with an empty buffer.
+    const mesh = new THREE.Mesh(model.geometry, headMat);
+    mesh.scale.setScalar(HEAD_HEIGHT);
+    mesh.position.y = HEAD_DROP;
+    mesh.castShadow = true;
+    bones.Head.add(mesh);
+
+    blockHead.visible = false;
+    blockHair.visible = false;
+  });
 
   // --- arms --------------------------------------------------------------
   for (const s of ["Left", "Right"] as const) {
@@ -149,9 +193,10 @@ export function buildRig(def: CharacterDef): Rig {
     attach(`${s}Foot` as BoneName, box(0.19, 0.12, 0.32), dark, [0, -0.05, 0.06]);
   }
 
-  return { root, bones, materials, disposables, head: bones.Head };
+  return { root, bones, materials, disposables, head: bones.Head, alive };
 }
 
 export function disposeRig(rig: Rig) {
+  rig.alive.value = false;
   for (const d of rig.disposables) d.dispose();
 }

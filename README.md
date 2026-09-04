@@ -123,12 +123,15 @@ model-agnostic.
 
 ### The faces
 
-The heads are the one part of a fighter that is not procedural. Each wears a
-512² texture cropped from a freely-licensed press photograph — Sam Altman by
-Steve Jurvetson, Dario Amodei by TechCrunch, both **CC BY 2.0** from Wikimedia
-Commons. `scripts/build-faces.py` downloads the originals, cuts them to the
-crop boxes recorded in that file, grades them so two photos shot in two
-different rooms look like one game, and writes `public/faces/`:
+Both fighters are real likenesses, and everything they wear comes from one pair
+of photographs: a 512² face texture for the DOM UI and the fallback head, and a
+3D head model (next section) reconstructed from the same shot. The sources are
+freely-licensed press photographs — Sam Altman by Steve Jurvetson, Dario Amodei
+by TechCrunch, both **CC BY 2.0** from Wikimedia Commons.
+
+`scripts/build-faces.py` downloads the originals, cuts them to the crop boxes
+recorded in that file, grades them so two photos shot in two different rooms
+look like one game, and writes `public/faces/`:
 
 ```bash
 python3 scripts/build-faces.py     # needs Pillow; re-run after changing a crop
@@ -139,17 +142,64 @@ are the hex values in `characters/Sam.ts` and `characters/Dario.ts` — that is
 what keeps a fighter's neck and forearms matching their own head rather than a
 guessed swatch.
 
-The texture is mapped onto the **left and right** faces of the head block, not
-the front. The arena camera is always perpendicular to the line between the
-fighters, so a fighter squared up to their opponent shows the player their
-profile; a front-mounted face would never be on screen. Front and back stay
-hair, so turning through a corner reads as a head turning away instead of
-flashing two complete faces at once.
+These textures are what the character-select cards and the winner screen show,
+and they are also the fallback head described below.
 
-The licence is the constraint to respect if you touch any of this: CC BY allows
-the crop, the grade and commercial use, but the attribution has to travel with
-the game. It is in `public/faces/CREDITS.md` and, more importantly, on the main
-menu.
+### The heads
+
+The head is the one part of a fighter that is not procedural: it is a real
+~4.5k-triangle photogrammetric model of the person, built by
+`scripts/build-heads.py`.
+
+```bash
+python3 scripts/build-heads.py              # process (free, local, offline)
+python3 scripts/build-heads.py --preview    # + render a four-sided check sheet
+python3 scripts/build-heads.py --regenerate # re-run Tripo, spends credits
+```
+
+The pipeline is deliberately split at the expensive step. Tripo image-to-3D
+turns the head crop into a mesh and its conversion task decimates it to 5k
+triangles with the UVs intact — that costs credits, so its output is kept in
+`assets/source/heads/` and reused. Like everything else in `assets/source/` it
+is git-ignored, so a fresh clone spends credits once (`--regenerate`) and never
+again. Everything downstream of it is local, deterministic and free to re-run:
+
+1. yaw the mesh so the face looks down +Z, like the rest of the rig
+2. cut the shoulders off along a *tilted* neck plane — a flat cut high enough to
+   clear the collar behind the ears has already taken the chin off in front
+3. drop orphaned vertices, normalise to one unit tall with the origin at the
+   base of the neck, and re-grade + shrink the texture to 512²
+
+The shipped result is ~200-310 kB per head, against ~3.3 MB for what Tripo
+hands back, and those files *are* committed under `public/models/`.
+Only the geometry and the texture are used; `rig/buildRig.ts` builds the
+material itself so the head answers to the same hit-flash channel as every other
+body part.
+
+Two things make it read as the right person rather than a blob on a body:
+
+- **The head turns towards the camera.** The arena camera is always
+  perpendicular to the line between the fighters, so squared up they would be in
+  pure profile — the one angle at which a real face is hardest to place. The
+  director adds up to `HEAD_TURN_MAX` of yaw to the Head bone after the mixer has
+  posed it (every clip poses that bone, so the addition refreshes rather than
+  winds up), and drops it while a fighter is on the floor.
+- **The head carries its own light.** The arena ambient is a strong blue; a
+  purely lit head comes out grey. Most of what you see is the emissive copy of
+  the texture.
+
+Loading is asynchronous and failure is not fatal: `rig/heads.ts` resolves to
+`null` rather than rejecting, and a fighter whose model is missing keeps the
+blocky fallback head — a box with the face texture on its two side faces (the
+sides, for the same profile reason as above). `Game.tsx` warms both models at
+startup, so in practice the fallback is never seen.
+
+### The licence
+
+This is the constraint to respect if you touch any of it. CC BY allows the crop,
+the grade, the 3D reconstruction and commercial use, but the attribution has to
+travel with the game. It is in `public/faces/CREDITS.md`,
+`public/models/CREDITS.md` and, most importantly, on the main menu.
 
 Sound is synthesised rather than sampled for the same reason: it loads instantly,
 weighs nothing, and every impact is pitch-randomised so twenty punches do not sound

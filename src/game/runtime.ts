@@ -67,6 +67,10 @@ export class FighterRuntime {
   visual: THREE.Object3D | null = null;
   /** Materials to tint white for a few frames when hit. */
   rigMaterials: THREE.MeshStandardMaterial[] | null = null;
+  /** The head bone, so the director can angle the face towards the camera. */
+  rigHead: THREE.Bone | null = null;
+  /** Current smoothed head turn in radians, on top of whatever the clip poses. */
+  headTurn = 0;
   constructor(def: CharacterDef, side: Side) {
     this.def = def;
     this.side = side;
@@ -90,6 +94,7 @@ export class FighterRuntime {
     this.invuln = 0;
     this.flash = 0;
     this.combo = 0;
+    this.headTurn = 0;
     this.counterTarget = null;
     this.counterDelay = 0;
     this.intent = emptyIntent();

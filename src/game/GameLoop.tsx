@@ -32,6 +32,17 @@ import { emptyIntent } from "@/game/types";
 
 const HUD_INTERVAL = 1 / 20;
 
+/**
+ * How far a fighter may turn their head towards the camera, in radians.
+ *
+ * The arena camera is always perpendicular to the line between the fighters, so
+ * squared up they would be in pure profile — and a profile is the one angle at
+ * which a real face is hardest to place. A third of a turn is enough to put the
+ * near eye and the shape of the nose on screen without it reading as a fighter
+ * who has stopped watching their opponent.
+ */
+const HEAD_TURN_MAX = 0.58;
+
 export function GameLoop() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const ai = useMemo(() => new FighterAI(), []);
@@ -121,8 +132,8 @@ export function GameLoop() {
     applyVelocity(opponent);
     clampToArena(player);
     clampToArena(opponent);
-    applyVisuals(player);
-    applyVisuals(opponent);
+    applyVisuals(player, camera, dt);
+    applyVisuals(opponent, camera, dt);
 
     // --- match clock ------------------------------------------------------
     if (fighting) {
@@ -208,10 +219,37 @@ function clampToArena(f: FighterRuntime) {
   if (outward > 0) f.knockback.addScaledVector(tmpVec, -outward);
 }
 
-/** Facing rotation + the white flash when hit. */
-function applyVisuals(f: FighterRuntime) {
+/** Facing rotation, the head's turn towards camera, and the white flash on hit. */
+function applyVisuals(f: FighterRuntime, camera: THREE.Camera, dt: number) {
   // `facing` is already smoothed by the controller's turn rate.
   if (f.visual) f.visual.rotation.y = f.facing;
+
+  // The head models are the one part of a fighter with a front, so it is worth
+  // pointing it at the audience. This runs after updateFighter has stepped the
+  // mixer, and adds to whatever rotation the clip just wrote — every clip poses
+  // the Head bone, so the addition is refreshed each frame rather than winding
+  // up. Fighters on the floor keep whatever the knockdown clip gave them.
+  const head = f.rigHead;
+  if (head) {
+    const upright =
+      f.state !== "KNOCKED_DOWN" && f.state !== "GETTING_UP" && f.state !== "DEFEATED";
+    let goal = 0;
+    if (upright) {
+      const toCamera = Math.atan2(
+        camera.position.x - f.position.x,
+        camera.position.z - f.position.z,
+      );
+      // Shortest way round, so crossing over does not spin the head the long way.
+      const delta = Math.atan2(
+        Math.sin(toCamera - f.facing),
+        Math.cos(toCamera - f.facing),
+      );
+      goal = THREE.MathUtils.clamp(delta, -HEAD_TURN_MAX, HEAD_TURN_MAX);
+    }
+    f.headTurn = THREE.MathUtils.lerp(f.headTurn, goal, 1 - Math.exp(-6 * dt));
+    head.rotation.y += f.headTurn;
+  }
+
   const materials = f.rigMaterials;
   if (materials) {
     const intensity = f.flash > 0 ? f.flash * 4 : 0;

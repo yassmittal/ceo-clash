@@ -34,16 +34,17 @@ export function MainMenu() {
       </p>
 
       {/*
-        The fighters now wear real, cropped photographs, so the old "does not
-        depict real people" line would simply be false. What is left is what is
-        actually true — parody, unaffiliated, unendorsed — plus the CC BY
-        attribution, which has to travel with the images rather than sit in a
-        file in the repo. See public/faces/CREDITS.md.
+        The fighters wear real likenesses — photographs on the UI portraits, and
+        3D heads reconstructed from those same photographs — so the old "does
+        not depict real people" line would simply be false. What is left is what
+        is actually true — parody, unaffiliated, unendorsed — plus the CC BY
+        attribution, which has to travel with the game rather than sit in a file
+        in the repo. See public/faces/CREDITS.md and public/models/CREDITS.md.
       */}
       <p className="disclaimer">
         An unaffiliated parody. Not endorsed by, or associated with, anyone depicted.
         <br />
-        Faces cropped from photos by Steve Jurvetson and TechCrunch, used under{" "}
+        Likenesses built from photos by Steve Jurvetson and TechCrunch, used under{" "}
         <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">
           CC BY 2.0
         </a>
