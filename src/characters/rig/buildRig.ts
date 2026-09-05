@@ -25,9 +25,27 @@ export interface Rig {
   disposables: Array<THREE.BufferGeometry | THREE.Material>;
   /** The head bone, handy for effects. */
   head: THREE.Bone;
-  /** Cleared by disposeRig. The 3D head arrives asynchronously and must not
-   *  attach itself to a rig that has already been torn down. */
-  alive: { value: boolean };
+  /** The parts of the rig that are not known yet when buildRig returns. */
+  live: RigLive;
+}
+
+export interface RigLive {
+  /** Cleared by disposeRig, so a head that finishes loading after the fighter
+   *  unmounted does not attach itself to a rig that is already torn down. */
+  alive: boolean;
+  /**
+   * The 3D head, once it has loaded — null while the blocky fallback is up.
+   *
+   * The director yaws this *mesh*, never the Head bone, and that distinction
+   * matters: three's PropertyMixer only writes an animated value back to the
+   * scene graph when it has changed since the previous frame (see
+   * PropertyMixer.apply). The Head track is a constant in WALK and RUN, which
+   * inherit it unchanged from STANCE, so a fighter on the move has a Head bone
+   * the mixer stops touching entirely — and anything added to that bone
+   * per-frame compounds instead of being reset. The mesh is ours alone, so
+   * assigning its rotation is idempotent by construction.
+   */
+  headMesh: THREE.Object3D | null;
 }
 
 const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
@@ -151,9 +169,9 @@ export function buildRig(def: CharacterDef): Rig {
   );
   const blockHair = attach("Head", box(0.47, 0.13, 0.43), hair, [0, 0.4, 0]);
 
-  const alive = { value: true };
+  const live: RigLive = { alive: true, headMesh: null };
   void loadHead(def.id).then((model) => {
-    if (!model || !alive.value) return;
+    if (!model || !live.alive) return;
 
     // White base colour, and most of what you see is the emissive copy of the
     // map: the arena ambient is a strong blue and a purely lit head comes out
@@ -174,6 +192,7 @@ export function buildRig(def: CharacterDef): Rig {
     mesh.position.y = HEAD_DROP;
     mesh.castShadow = true;
     bones.Head.add(mesh);
+    live.headMesh = mesh;
 
     blockHead.visible = false;
     blockHair.visible = false;
@@ -193,10 +212,11 @@ export function buildRig(def: CharacterDef): Rig {
     attach(`${s}Foot` as BoneName, box(0.19, 0.12, 0.32), dark, [0, -0.05, 0.06]);
   }
 
-  return { root, bones, materials, disposables, head: bones.Head, alive };
+  return { root, bones, materials, disposables, head: bones.Head, live };
 }
 
 export function disposeRig(rig: Rig) {
-  rig.alive.value = false;
+  rig.live.alive = false;
+  rig.live.headMesh = null;
   for (const d of rig.disposables) d.dispose();
 }

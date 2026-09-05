@@ -181,9 +181,21 @@ Two things make it read as the right person rather than a blob on a body:
 - **The head turns towards the camera.** The arena camera is always
   perpendicular to the line between the fighters, so squared up they would be in
   pure profile — the one angle at which a real face is hardest to place. The
-  director adds up to `HEAD_TURN_MAX` of yaw to the Head bone after the mixer has
-  posed it (every clip poses that bone, so the addition refreshes rather than
-  winds up), and drops it while a fighter is on the floor.
+  director yaws the head by `HEAD_TURN_MAX * sin(angle to camera)`, and drops it
+  to zero while a fighter is on the floor.
+
+  Two details there are load-bearing, both learned the hard way. The yaw is
+  **assigned to the head mesh, never added to the Head bone**: three's
+  `PropertyMixer.apply()` writes an animated value back to the scene graph only
+  when it changed since the last frame, and the Head track is a constant in WALK
+  and RUN (they inherit it unchanged from `STANCE`), so a moving fighter has a
+  Head bone the mixer stops touching — and anything added to it per frame
+  compounds instead of resetting. The first version of this did exactly that and
+  wound the heads up past 5000 degrees. And the amount is a **sine, not a clamped
+  angle**: side-on, the camera is ~90 degrees off a fighter's facing, so a clamp
+  is pinned at its limit essentially always, then flips sign the moment a
+  crossover carries `facing` past pointing away. `sin` eases through zero there
+  instead.
 - **The head carries its own light.** The arena ambient is a strong blue; a
   purely lit head comes out grey. Most of what you see is the emissive copy of
   the texture.
