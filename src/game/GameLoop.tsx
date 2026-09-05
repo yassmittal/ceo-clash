@@ -32,6 +32,17 @@ import { emptyIntent } from "@/game/types";
 
 const HUD_INTERVAL = 1 / 20;
 
+/**
+ * How far a fighter may turn their head towards the camera, in radians.
+ *
+ * The arena camera is always perpendicular to the line between the fighters, so
+ * squared up they would be in pure profile — the one angle at which a real face
+ * is hardest to place. Sixteen degrees is enough to put the near eye and the
+ * line of the nose on screen; the 33 degrees this used to be read as a fighter
+ * permanently craning at the audience instead of watching their opponent.
+ */
+const HEAD_TURN_MAX = 0.28;
+
 export function GameLoop() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const ai = useMemo(() => new FighterAI(), []);
@@ -121,8 +132,8 @@ export function GameLoop() {
     applyVelocity(opponent);
     clampToArena(player);
     clampToArena(opponent);
-    applyVisuals(player);
-    applyVisuals(opponent);
+    applyVisuals(player, camera, dt);
+    applyVisuals(opponent, camera, dt);
 
     // --- match clock ------------------------------------------------------
     if (fighting) {
@@ -208,10 +219,42 @@ function clampToArena(f: FighterRuntime) {
   if (outward > 0) f.knockback.addScaledVector(tmpVec, -outward);
 }
 
-/** Facing rotation + the white flash when hit. */
-function applyVisuals(f: FighterRuntime) {
+/** Facing rotation, the head's turn towards camera, and the white flash on hit. */
+function applyVisuals(f: FighterRuntime, camera: THREE.Camera, dt: number) {
   // `facing` is already smoothed by the controller's turn rate.
   if (f.visual) f.visual.rotation.y = f.facing;
+
+  // The head models are the one part of a fighter with a front, so it is worth
+  // angling towards the audience. Two things about how:
+  //
+  // It is written to the head *mesh*, by assignment, and never added to the Head
+  // bone — see RigLive.headMesh for why adding to an animated bone silently
+  // compounds. The mesh hangs off the Head bone, so yawing it pivots the head
+  // about the neck exactly as the bone would have.
+  //
+  // And the amount is sin(angle to camera) rather than a clamped angle. Squared
+  // up, the camera sits ~90 degrees off a fighter's facing, so a clamp is pinned
+  // at its limit essentially always — a constant hard crank that then flipped
+  // sign the instant a crossover took `facing` past pointing-away-from-camera.
+  // sin() is continuous through that: it eases down to zero as a fighter turns
+  // away and back out the other side, which reads as a head following the
+  // action instead of a servo.
+  const headMesh = f.rigLive?.headMesh;
+  if (headMesh) {
+    const upright =
+      f.state !== "KNOCKED_DOWN" && f.state !== "GETTING_UP" && f.state !== "DEFEATED";
+    let goal = 0;
+    if (upright) {
+      const toCamera = Math.atan2(
+        camera.position.x - f.position.x,
+        camera.position.z - f.position.z,
+      );
+      goal = HEAD_TURN_MAX * Math.sin(toCamera - f.facing);
+    }
+    f.headTurn = THREE.MathUtils.lerp(f.headTurn, goal, 1 - Math.exp(-4 * dt));
+    headMesh.rotation.y = f.headTurn;
+  }
+
   const materials = f.rigMaterials;
   if (materials) {
     const intensity = f.flash > 0 ? f.flash * 4 : 0;

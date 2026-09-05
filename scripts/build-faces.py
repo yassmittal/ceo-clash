@@ -27,7 +27,8 @@ from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageStat
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "public" / "faces"
-CACHE_DIR = ROOT / ".cache" / "faces"
+# Shares the repo's git-ignored bucket for generated/downloaded source assets.
+CACHE_DIR = ROOT / "assets" / "source" / "faces"
 SIZE = 512
 UA = "ceo-clash/0.1 (personal parody game; contact via repo)"
 

@@ -10,6 +10,7 @@ import type {
 } from "@/game/types";
 import { COMBAT, moveDuration, tuningFor, type Tuning } from "@/combat/moves";
 import type { Animator } from "@/characters/animations/Animator";
+import type { RigLive } from "@/characters/rig/buildRig";
 import { emptyIntent } from "@/game/types";
 
 /**
@@ -67,6 +68,10 @@ export class FighterRuntime {
   visual: THREE.Object3D | null = null;
   /** Materials to tint white for a few frames when hit. */
   rigMaterials: THREE.MeshStandardMaterial[] | null = null;
+  /** The rig's late-arriving parts; the director yaws the 3D head from here. */
+  rigLive: RigLive | null = null;
+  /** Current smoothed head turn in radians, on top of whatever the clip poses. */
+  headTurn = 0;
   constructor(def: CharacterDef, side: Side) {
     this.def = def;
     this.side = side;
@@ -90,6 +95,7 @@ export class FighterRuntime {
     this.invuln = 0;
     this.flash = 0;
     this.combo = 0;
+    this.headTurn = 0;
     this.counterTarget = null;
     this.counterDelay = 0;
     this.intent = emptyIntent();

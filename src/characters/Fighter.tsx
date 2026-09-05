@@ -29,11 +29,13 @@ export function Fighter({ runtime }: { runtime: FighterRuntime }) {
   useEffect(() => {
     runtime.animator = animator;
     runtime.rigMaterials = rig.materials;
+    runtime.rigLive = rig.live;
     return () => {
       animator.dispose();
       disposeRig(rig);
       runtime.animator = null;
       runtime.rigMaterials = null;
+      runtime.rigLive = null;
     };
   }, [animator, rig, runtime]);
 
