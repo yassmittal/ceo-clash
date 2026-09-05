@@ -56,7 +56,9 @@ def render(P, UV, F, tex, yaw=0.0, pitch=0.0, size=460):
 
 
 def sheet(P, UV, F, tex, size=460):
-    views = [0.0, np.pi / 2, np.pi, -np.pi / 2]   # front, right, back, left
+    # Yaw turns the *model*, so each panel shows the side named here — note that
+    # yawing by +90 deg swings the model's -X side into view, not its +X one.
+    views = [0.0, np.pi / 2, np.pi, -np.pi / 2]   # +Z, -X, -Z, +X
     out = Image.new("RGB", (size * len(views), size), (250, 250, 250))
     for i, yaw in enumerate(views):
         out.paste(render(P.astype(np.float64), UV.astype(np.float64),

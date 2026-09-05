@@ -10,6 +10,7 @@ import { resetCamera } from "./Camera";
 import { CHARACTERS } from "@/characters";
 import { useGameStore } from "@/state/gameStore";
 import { input } from "@/input/InputManager";
+import { preloadGear } from "@/characters/rig/gear";
 import { preloadHeads } from "@/characters/rig/heads";
 
 /**
@@ -31,7 +32,10 @@ export function Game() {
 
   // The arena is mounted for the whole session behind the menu, so fetching the
   // head models now means they are ready long before anyone reaches a fight.
-  useEffect(() => preloadHeads(), []);
+  useEffect(() => {
+    preloadHeads();
+    preloadGear();
+  }, []);
 
   // Dev-only bridge: lets you poke at the live fight from the browser console
   // (window.ceoClash.fight.opponent.health = 5) and is stripped from builds.

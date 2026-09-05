@@ -23,17 +23,26 @@ const STANCE: Pose = {
   Neck: [2, 0, 0],
   Head: [0, 10, 0],
 
-  // Elbows are kept wide: with chunky limbs a tight guard buries the forearms
-  // inside the chest from the side-on fighting camera.
+  // A boxer's guard: elbows down and in, forearms near-vertical, fists up at
+  // cheek height and far enough forward to stay clear of the torso silhouette —
+  // the arena camera only ever sees these fighters side-on, and an elbow tucked
+  // properly against the ribs disappears behind the chest block.
+  //
+  // The wrist rolls are the part that is easy to miss. They read as arbitrary
+  // and are not: the glove's striking face is +Z in Hand space, and without a
+  // roll it ends up pointing up and *backwards* here. That was invisible for as
+  // long as the hand was a symmetric box, and became the single thing most
+  // wrong with the fighters the moment they were given real gloves. Solved
+  // rather than eyeballed — see the note above buildClips.
   LeftShoulder: [0, 0, -10],
-  LeftArm: [-54, 0, 26],
-  LeftForeArm: [-74, -16, 0],
-  LeftHand: [0, 0, 0],
+  LeftArm: [-26, -16, -4],
+  LeftForeArm: [-117, 30, -4],
+  LeftHand: [0, 121, 0],
 
   RightShoulder: [0, 0, 10],
-  RightArm: [-44, 0, -28],
-  RightForeArm: [-70, 18, 0],
-  RightHand: [0, 0, 0],
+  RightArm: [-33, 5, 4],
+  RightForeArm: [-89, -30, 12],
+  RightHand: [0, -120, 0],
 
   LeftUpLeg: [-14, 0, 7],
   LeftLeg: [16, 0, 0],
@@ -69,8 +78,8 @@ function idle(): THREE.AnimationClip {
         pos: [0, 0.925, 0],
         Chest: [1, -12, 0],
         Head: [3, 12, 0],
-        LeftArm: [-61, 0, 15],
-        RightArm: [-43, 0, -18],
+        LeftArm: [-31, -16, -6],
+        RightArm: [-31, 5, 7],
         LeftLeg: [20, 0, 0],
         RightLeg: [22, 0, 0],
       },
@@ -81,8 +90,8 @@ function idle(): THREE.AnimationClip {
         pos: [0, 0.945, 0],
         Chest: [-4, -8, 0],
         Head: [-2, 8, 0],
-        LeftArm: [-56, 0, 12],
-        RightArm: [-48, 0, -14],
+        LeftArm: [-23, -16, -1],
+        RightArm: [-37, 5, 2],
       },
     },
     { t: 1.6, pose: { pos: [0, 0.95, 0] } },
@@ -133,8 +142,8 @@ function run(): THREE.AnimationClip {
         LeftLeg: [46, 0, 0],
         RightUpLeg: [40, 0, -7],
         RightLeg: [26, 0, 0],
-        LeftArm: [-72, 0, 14],
-        RightArm: [-28, 0, -16],
+        LeftArm: [-47, -16, -4],
+        RightArm: [-9, 5, 4],
       },
     },
     { t: 0.28, pose: { pos: [0, 0.93, 0], Spine: [14, -6, 0] } },
@@ -147,8 +156,8 @@ function run(): THREE.AnimationClip {
         LeftLeg: [24, 0, 0],
         RightUpLeg: [-56, 0, -7],
         RightLeg: [48, 0, 0],
-        LeftArm: [-30, 0, 14],
-        RightArm: [-70, 0, -16],
+        LeftArm: [-3, -16, -4],
+        RightArm: [-57, 5, 4],
       },
     },
     { t: 0.56, pose: { pos: [0, 0.95, 0], Spine: [10, -6, 0] } },
@@ -167,7 +176,8 @@ function punch(): THREE.AnimationClip {
         RightShoulder: [0, -14, 6],
         RightArm: [-34, 0, -22],
         RightForeArm: [-104, 34, 0],
-        LeftArm: [-64, 0, 16],
+        RightHand: [0, 129, 0],
+        LeftArm: [-29, -16, -6],
       },
     },
     {
@@ -182,9 +192,8 @@ function punch(): THREE.AnimationClip {
         RightShoulder: [0, 22, 0],
         RightArm: [-96, -14, -6],
         RightForeArm: [-6, 0, 0],
-        RightHand: [0, 0, 0],
-        LeftArm: [-40, 0, 20],
-        LeftForeArm: [-100, -30, 0],
+        RightHand: [0, 154, 0],
+        LeftArm: [-23, -16, -2],
         RightUpLeg: [22, 0, -7],
       },
     },
@@ -195,6 +204,7 @@ function punch(): THREE.AnimationClip {
         Chest: [0, -18, 0],
         RightArm: [-74, -6, -12],
         RightForeArm: [-46, 12, 0],
+        RightHand: [0, 141, 0],
       },
     },
     { t: 0.35, pose: {} },
@@ -261,8 +271,10 @@ function block(): THREE.AnimationClip {
     Head: [10, 6, 0],
     LeftArm: [-92, 0, 38],
     LeftForeArm: [-96, -34, 0],
+    LeftHand: [0, -107, 0],
     RightArm: [-88, 0, -36],
     RightForeArm: [-94, 32, 0],
+    RightHand: [0, 112, 0],
     LeftUpLeg: [-22, 0, 8],
     LeftLeg: [34, 0, 0],
     RightUpLeg: [18, 0, -8],
@@ -299,8 +311,8 @@ function hit(): THREE.AnimationClip {
       pose: {
         Chest: [-12, 0, 0],
         Head: [-14, 0, 0],
-        LeftArm: [-48, 0, 26],
-        RightArm: [-38, 0, -30],
+        LeftArm: [-28, -16, -4],
+        RightArm: [-35, 5, 4],
       },
     },
     { t: 0.35, pose: {} },
@@ -370,10 +382,10 @@ function getUp(): THREE.AnimationClip {
         Spine: [26, -4, 0],
         Chest: [18, -8, 0],
         Head: [-6, 4, 0],
-        LeftArm: [-40, 0, 22],
-        LeftForeArm: [-70, -20, 0],
-        RightArm: [-34, 0, -22],
-        RightForeArm: [-66, 20, 0],
+        LeftArm: [-31, -16, -4],
+        LeftForeArm: [-113, 30, -4],
+        RightArm: [-37, 5, 4],
+        RightForeArm: [-85, -30, 12],
         LeftUpLeg: [-72, 0, 14],
         LeftLeg: [92, 0, 0],
         RightUpLeg: [-40, 0, -12],
@@ -496,8 +508,10 @@ function gptSmash(): THREE.AnimationClip {
         RightShoulder: [0, 30, -4],
         RightArm: [-118, -18, -4],
         RightForeArm: [-4, 0, 0],
+        RightHand: [0, -172, 0],
         LeftArm: [-30, 0, 26],
         LeftForeArm: [-96, -30, 0],
+        LeftHand: [0, -127, 0],
         LeftUpLeg: [-40, 0, 12],
         LeftLeg: [42, 0, 0],
         RightUpLeg: [34, 0, -10],
@@ -533,8 +547,10 @@ function claudeCounter(): THREE.AnimationClip {
         Head: [12, 8, 0],
         LeftArm: [-104, 0, 30],
         LeftForeArm: [-110, -52, 0],
+        LeftHand: [0, -94, 0],
         RightArm: [-100, 0, -28],
         RightForeArm: [-108, 50, 0],
+        RightHand: [0, 99, 0],
         LeftUpLeg: [-30, 0, 10],
         LeftLeg: [44, 0, 0],
         RightUpLeg: [24, 0, -10],
@@ -569,8 +585,10 @@ function claudeCounter(): THREE.AnimationClip {
         RightShoulder: [0, 26, 0],
         RightArm: [-104, -30, -18],
         RightForeArm: [-96, 0, 0],
+        RightHand: [0, 168, 0],
         LeftArm: [-34, 0, 24],
         LeftForeArm: [-92, -28, 0],
+        LeftHand: [0, -129, 0],
         LeftUpLeg: [-44, 0, 12],
         LeftLeg: [36, 0, 0],
         RightUpLeg: [30, 0, -10],
@@ -591,6 +609,31 @@ function claudeCounter(): THREE.AnimationClip {
 }
 
 /** Every clip a fighter needs, keyed by AnimState name. */
+/**
+ * A note on the wrist angles, because they look like magic numbers.
+ *
+ * The glove model's striking face is +Z in Hand space. Nothing in these poses
+ * used to set a wrist, so that face inherited whatever the arm chain happened to
+ * produce — which, in the old stance, was up and *backwards*. That was invisible
+ * while the hand was a symmetric box and became the most wrong thing about the
+ * fighters as soon as they had gloves.
+ *
+ * The fix was solved rather than eyeballed: hold each pose's authored Arm and
+ * ForeArm angles fixed, and search the Hand bone for the rotation that points
+ * the striking face at the opponent. Two things fell out of doing it that way.
+ * Every answer came back as a pure Y roll — forearm pronation, which is both the
+ * anatomically correct degree of freedom and free here, since the forearm capsule
+ * is rotationally symmetric and its twist cannot be seen. And where a glove
+ * already points at the opponent (a fully extended punch) the problem correctly
+ * goes indifferent: the striking face can only ever be perpendicular to the
+ * glove's own long axis, so at full extension the roll stops mattering and the
+ * solver leaves it alone.
+ *
+ * The same solve produced the stance itself, against targets for where each
+ * glove sits and which way it faces. It needs joint limits to be worth anything:
+ * unconstrained it will happily hit the targets with a shoulder twisted 116
+ * degrees and an elbow that bends backwards.
+ */
 export function buildClips(def: CharacterDef): THREE.AnimationClip[] {
   return [
     idle(),

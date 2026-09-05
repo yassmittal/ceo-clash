@@ -206,12 +206,94 @@ blocky fallback head — a box with the face texture on its two side faces (the
 sides, for the same profile reason as above). `Game.tsx` warms both models at
 startup, so in practice the fallback is never seen.
 
+### The gloves and shoes
+
+The hands and feet are real models too, built by `scripts/build-gear.py` with the
+same three commands and the same split at the expensive step.
+
+These come from Tripo *text*-to-3D rather than image-to-3D, which matters twice
+over. There is no press photo of anyone's forearm, so there was nothing to
+reconstruct from — and because nothing here derives from a photograph, the gear
+carries no attribution obligation the way the heads do. It also plays to the
+generator's strengths: generative 3D is notoriously bad at bare hands and
+reliably good at gloves, so a clenched glove sidesteps the fingers entirely.
+Worth knowing if you re-prompt: the first attempt spelled out "clenched fist
+shape… no hand, no arm, no person" and came back a faceted shard with 90% of its
+vertices in one lump. `"a red boxing glove, product render"` worked first try —
+these models follow a plain noun phrase far better than a list of prohibitions.
+
+One glove and one shoe are generated, not four. `rig/gear.ts` mirrors each across
+X for the other side, which halves the download for parts that are by definition
+the same object. Mirroring is not just negating the positions: a reflection
+reverses the handedness of every triangle, so the winding has to be flipped back
+or the mesh renders inside-out and gets culled away. The check for this is that
+the mirrored geometry's signed volume stays **positive** — it is +0.136 for the
+glove either way round, where a missed winding flip would read −0.136.
+
+The glove ships near-greyscale so `buildRig.ts` can multiply it by each fighter's
+accent colour and get two different gloves out of one asset; the black cuff trim
+is luminance detail and survives the tint. It is also scaled **non-uniformly** —
+a correctly-proportioned glove is about 0.6 as wide as it is long, which on this
+rig comes out narrower than the forearm capsule it is meant to swallow, so the
+arm pokes out through its sides. Scaling up uniformly instead would put the
+fighters' hands below their knees. Same argument as the oversized head: these are
+caricatures, and a part has to read at the size it actually occupies on screen.
+
+Giving the fighters gloves also exposed something that had been wrong all along
+and invisible: **no pose in `animations/clips.ts` ever set a wrist.** The hand
+was a symmetric box, so its roll could not be seen, and the glove's striking face
+— +Z in Hand space — inherited whatever the arm chain happened to produce. In the
+old stance that was up and *backwards*, pointing the knuckles away from the
+opponent.
+
+Both the guard and the wrists are now solved rather than eyeballed
+(`scripts/` has no copy of this; it was a throwaway, and the results are baked
+into the poses). The wrist solve holds each pose's authored Arm and ForeArm
+angles fixed — that animation reads well and was not worth disturbing — and
+searches only the Hand bone. Every answer came back as a pure Y roll, which is
+forearm pronation: the anatomically correct degree of freedom, and free here
+because the forearm capsule is rotationally symmetric so the twist cannot be
+seen. Where a glove already points at the opponent the problem correctly goes
+indifferent, since the striking face can only ever be perpendicular to the
+glove's own long axis.
+
+Two things that solve needs to be worth anything. **Joint limits**: unconstrained
+it will happily hit every target with a shoulder twisted 116° and an elbow that
+bends backwards. And **a check against the torso**: the first guard it produced
+was a textbook tight one, elbows against the ribs — which from the side-on arena
+camera buried both arms behind the chest block, exactly as the old stance comment
+warned. The shipped guard holds the gloves 0.24 m and 0.32 m ahead of the body so
+they silhouette against the arena instead.
+
+Measured in-game over a full idle breathing cycle, all four gloves now face the
+opponent (+0.31 to +0.75, against −0.26 and −0.36 before) and sit at 1.30–1.32 m
+on a 1.72 m fighter — chin height. A thrown punch peaks at 0.44 m of reach with
+its striking face at +0.72, so it lands knuckles-first.
+
+**Only rigid parts belong here, and that is the whole design.** A glove barely
+rotates against the wrist and a shoe barely rotates against the ankle, so a solid
+mesh bolted to one bone is honest. Limbs are not like that. A capsule's
+hemispherical cap *is* a ball joint — two of them rotating about a shared point
+interpenetrate at any angle, so an elbow or knee never opens a seam. Swap either
+for a solid scanned forearm and the joint tears open the moment it bends, and the
+generator bakes the photo's own elbow bend into the vertices besides. Torsos have
+the same problem at the waist, where `Spine` and `Chest` are deliberately
+separate bones. The fix for those is not twelve rigid parts but one *skinned*
+body that deforms through its joints — which `rig/bones.ts` already anticipates
+with its Mixamo naming, and which would leave the clips and state machine
+untouched.
+
 ### The licence
 
 This is the constraint to respect if you touch any of it. CC BY allows the crop,
 the grade, the 3D reconstruction and commercial use, but the attribution has to
 travel with the game. It is in `public/faces/CREDITS.md`,
 `public/models/CREDITS.md` and, most importantly, on the main menu.
+
+It covers the faces and the heads only. `glove.glb` and `shoe.glb` are generated
+from text and derive from no photograph, so nothing is owed on them — do not
+delete the credit line on the assumption that this now applies to everything
+under `public/models/`.
 
 Sound is synthesised rather than sampled for the same reason: it loads instantly,
 weighs nothing, and every impact is pitch-randomised so twenty punches do not sound
