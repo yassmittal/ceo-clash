@@ -16,6 +16,7 @@ bun run dev        # http://localhost:5173
 bun run build      # typecheck + production bundle
 bun run sim        # headless fight simulation (see "Verification")
 bun run balance    # match-length and win-rate report
+bun run sounds     # pull CC0 sound effects from Freesound (needs FREESOUND_CLIENT_SECRET)
 ```
 
 ## Controls
@@ -59,7 +60,7 @@ src/
 ├── input/                  keymap and edge-triggered input collection
 ├── state/gameStore.ts      zustand: phase, health bars, clock, announcements
 ├── effects/                pooled impact particles + shockwave
-├── audio/AudioManager.ts   every sound, synthesised with Web Audio
+├── audio/AudioManager.ts   every sound: CC0 samples, synth fallback
 └── components/             menu, character select, HUD, countdown, winner screen
 ```
 
@@ -295,10 +296,47 @@ from text and derive from no photograph, so nothing is owed on them — do not
 delete the credit line on the assumption that this now applies to everything
 under `public/models/`.
 
-Sound is synthesised rather than sampled for the same reason: it loads instantly,
-weighs nothing, and every impact is pitch-randomised so twenty punches do not sound
-like one looping sample. Swapping in recordings means replacing the method bodies
-in `audio/AudioManager.ts`.
+### Sound
+
+Sampled where samples exist, synthesised where they do not.
+
+```bash
+bun run sounds          # fetch anything missing
+bun run sounds --force  # re-fetch, e.g. after editing a query
+```
+
+`scripts/sounds.ts` pulls 19 CC0 clips from Freesound into `public/sounds/`
+(744 kB, 128kbps mono mp3) and writes a `manifest.json` saying how many variants
+of each sound exist. It takes the HQ mp3 *preview* of each result, which needs
+only the API token and no OAuth handshake — a punch does not need 24-bit WAV, and
+every byte here is on the critical path to the first fight. CC0 is preferred, so
+in the normal case nothing carries an attribution obligation; a query with no CC0
+results falls back to Attribution and those entries are flagged, both per-line in
+`public/sounds/CREDITS.md` and in the script's summary.
+
+**The synthesised versions are not dead code.** Each method tries a sample and
+falls through when there isn't one:
+
+```ts
+hit(power = 1) {
+  if (this.sample("hit", 0.9)) return;
+  // ...the synthesised version, unchanged
+}
+```
+
+So a missing pack, a file that fails to decode, or a fetch still in flight during
+the first fight all degrade to the old behaviour instead of silence, and the game
+still works offline with no audio files at all. Every sample is pitch- and
+gain-randomised per impact and the variants are cycled, so twenty punches in a row
+do not sound like one clip looping.
+
+Two things were fixed on the way in from the branch this came from. `credits.push`
+lived *inside* the download loop, after the early `continue` that skips files
+already on disk — so any re-run without `--force` rewrote `CREDITS.md` with zero
+entries and silently dropped the attribution for every sound already there. It now
+credits each chosen sound whether or not it was downloaded this run. And the fetch
+paths were absolute (`/sounds/...`), which breaks the moment the game is served
+from a subpath; they use `import.meta.env.BASE_URL` like every other loader here.
 
 ## Verification
 
