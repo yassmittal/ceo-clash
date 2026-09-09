@@ -1,5 +1,7 @@
 import { useGameStore } from "@/state/gameStore";
 import { audio } from "@/audio/AudioManager";
+import { AUTHOR } from "@/author";
+import { SourceLink } from "@/components/UI/SourceLink";
 
 export function MainMenu() {
   const goToSelect = useGameStore((s) => s.goToSelect);
@@ -31,6 +33,13 @@ export function MainMenu() {
 
       <p className="subtitle">
         two ceos · one arena · zero benchmarks
+      </p>
+
+      {/* Signed, the way the title block on a drawing is signed: quiet, and
+          pointing at the whole thing rather than at a portfolio. */}
+      <p className="byline">
+        built by {AUTHOR.name} · open source ·{" "}
+        <SourceLink label="read the code" className="byline-link" markSize={11} />
       </p>
 
       {/*

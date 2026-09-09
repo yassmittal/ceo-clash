@@ -3,6 +3,7 @@ import { CHARACTERS } from "@/characters";
 import { useGameStore } from "@/state/gameStore";
 import { audio } from "@/audio/AudioManager";
 import { Portrait } from "./Portrait";
+import { SourceLink } from "./SourceLink";
 
 export function WinnerScreen() {
   const winner = useGameStore((s) => s.winner);
@@ -54,6 +55,12 @@ export function WinnerScreen() {
         </button>
       </div>
       <p className="hint">press R to run it back</p>
+
+      {/* The end of a match is the one moment a player has time to be curious
+          about how the thing works. */}
+      <p className="byline">
+        <SourceLink label="how it works — read the source" className="byline-link" markSize={11} />
+      </p>
     </div>
   );
 }

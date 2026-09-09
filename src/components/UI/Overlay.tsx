@@ -6,6 +6,7 @@ import { Hud } from "@/components/HUD/Hud";
 import { Countdown } from "./Countdown";
 import { WinnerScreen } from "./WinnerScreen";
 import { ControlsStrip } from "./ControlsStrip";
+import { SourceLink } from "./SourceLink";
 import { audio } from "@/audio/AudioManager";
 
 /** Routes the DOM UI off the single global phase. */
@@ -37,6 +38,8 @@ export function Overlay() {
         <button className="icon-btn" onClick={toggleMute}>
           {muted ? "SOUND OFF" : "SOUND ON"}
         </button>
+        {/* The game is open source; the link rides along with it, in every phase. */}
+        <SourceLink className="icon-btn icon-btn--link" hideLabelWhenNarrow />
       </div>
 
       <div className="crt" />

@@ -507,6 +507,44 @@ button { font-family: inherit; cursor: pointer; }
 }
 .icon-btn:hover { color: #fff; border-color: #fff; }
 
+/* The corner source link is an <a>, so it has to be told to sit like a button. */
+.icon-btn--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  text-decoration: none;
+  line-height: 1;
+}
+.icon-btn--link:focus-visible { color: #fff; border-color: #fff; outline: none; }
+
+/* ---------------------------------------------------- source / byline */
+/* Quiet mono line on the menu and winner screens: a signature, not a CTA. */
+.byline {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  margin: 0.2rem 0 0;
+  text-align: center;
+}
+.byline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  color: rgba(255, 255, 255, 0.62);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  padding-bottom: 0.15em;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.byline-link:hover,
+.byline-link:focus-visible {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  outline: none;
+}
+
 .disclaimer {
   position: absolute;
   bottom: 0.7rem;
@@ -525,4 +563,6 @@ button { font-family: inherit; cursor: pointer; }
 @media (max-width: 640px) {
   .card { width: 88vw; }
   .controls-strip { font-size: 0.52rem; }
+  /* The corner row runs out of room first — the mark alone still reads. */
+  .label-wide { display: none; }
 }
