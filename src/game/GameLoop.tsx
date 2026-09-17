@@ -152,7 +152,7 @@ export function GameLoop() {
       if (fight.koTimer > 2.1) {
         const winner = player.health <= 0 ? opponent : player;
         winner.setState("VICTORY", 0, true);
-        store.declareWinner(winner.side, koLine());
+        store.declareWinner(winner.side, koLine(winner.def));
       }
     }
 

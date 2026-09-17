@@ -5,6 +5,7 @@ import { CharacterSelect } from "@/components/CharacterSelect/CharacterSelect";
 import { Hud } from "@/components/HUD/Hud";
 import { Countdown } from "./Countdown";
 import { WinnerScreen } from "./WinnerScreen";
+import { Loading } from "./Loading";
 import { ControlsStrip } from "./ControlsStrip";
 import { SourceLink } from "./SourceLink";
 import { audio } from "@/audio/AudioManager";
@@ -27,6 +28,7 @@ export function Overlay() {
       {phase === "COUNTDOWN" && <Countdown />}
       {phase === "MENU" && <MainMenu />}
       {phase === "CHARACTER_SELECT" && <CharacterSelect />}
+      {phase === "LOADING" && <Loading />}
       {phase === "WINNER" && <WinnerScreen />}
 
       <div className="corner-buttons">

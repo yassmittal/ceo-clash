@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { FighterId, GamePhase, Side } from "@/game/types";
-import { other } from "@/characters";
+import { FIGHTER_IDS } from "@/characters";
 
 /**
  * GLOBAL GAME STATE ONLY.
@@ -41,8 +41,13 @@ interface GameStore extends HudSnapshot {
   matchKey: number;
 
   goToMenu: () => void;
-  goToSelect: () => void;
-  selectCharacter: (id: FighterId) => void;
+  /** Open character select. `step: "opponent"` skips straight to picking a
+   *  new opponent for the fighter you already have. */
+  goToSelect: (step?: SelectStep) => void;
+  /** Which half of the two-step select the screen opens on. */
+  selectStep: SelectStep;
+  /** Lock in a pair and start loading the match. */
+  selectCharacter: (playerId: FighterId, opponentId: FighterId) => void;
   setPhase: (p: GamePhase) => void;
   setCountdown: (n: number | null) => void;
   syncHud: (s: Partial<HudSnapshot>) => void;
@@ -53,14 +58,18 @@ interface GameStore extends HudSnapshot {
   toggleMute: () => void;
 }
 
+export type SelectStep = "fighter" | "opponent";
+
 let announcementId = 0;
 
 const MAX_HP = 100;
 
 export const useGameStore = create<GameStore>((set) => ({
   phase: "MENU",
-  playerId: "sam",
-  opponentId: "dario",
+  // Any valid pair will do: nothing is shown until select has set a real one.
+  playerId: FIGHTER_IDS[0],
+  opponentId: FIGHTER_IDS[1],
+  selectStep: "fighter",
   playerHp: MAX_HP,
   opponentHp: MAX_HP,
   playerMeter: 0,
@@ -75,14 +84,18 @@ export const useGameStore = create<GameStore>((set) => ({
 
   goToMenu: () =>
     set({ phase: "MENU", winner: null, announcements: [], countdown: null }),
-  goToSelect: () => set({ phase: "CHARACTER_SELECT", winner: null, announcements: [] }),
+  goToSelect: (step = "fighter") =>
+    set({ phase: "CHARACTER_SELECT", selectStep: step, winner: null, announcements: [] }),
 
-  selectCharacter: (id) =>
+  // Goes through LOADING rather than straight to the countdown: only the chosen
+  // pair's heads are fetched (see game/Game.tsx), and the countdown waits for
+  // them instead of letting a head pop in during "3, 2, 1".
+  selectCharacter: (playerId, opponentId) =>
     set((s) => ({
-      playerId: id,
-      opponentId: other(id),
-      phase: "COUNTDOWN",
-      countdown: 3,
+      playerId,
+      opponentId,
+      phase: "LOADING",
+      countdown: null,
       playerHp: MAX_HP,
       opponentHp: MAX_HP,
       playerMeter: 0,

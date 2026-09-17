@@ -1,12 +1,14 @@
 # CEO CLASH
 
-A browser 3D fighting game. Two stylised parody CEOs, one neon arena, hand-to-hand
-combat, and a Rematch button you are meant to hit immediately.
+A browser 3D fighting game. Six stylised parody tech CEOs, one neon arena,
+hand-to-hand combat, and a Rematch button you are meant to hit immediately.
 
 Built to `CEO_Clash_MVP_Development_Plan.md`, which remains the spec.
 
-> Fictional parody. Not affiliated with, endorsed by, or depicting real people or
-> companies. The stat numbers are gameplay dials and nothing else.
+> Unaffiliated parody. Not endorsed by, or associated with, anyone depicted or
+> their companies. The fighters wear real likenesses built from public domain
+> and CC-licensed photos (credited on the main menu and in the CREDITS files).
+> The stat numbers are gameplay dials and nothing else.
 
 ## Run it
 
@@ -15,7 +17,7 @@ bun install
 bun run dev        # http://localhost:5173
 bun run build      # typecheck + production bundle
 bun run sim        # headless fight simulation (see "Verification")
-bun run balance    # match-length and win-rate report
+bun run balance    # round-robin win rates and match lengths
 bun run sounds     # pull CC0 sound effects from Freesound (needs FREESOUND_CLIENT_SECRET)
 ```
 
@@ -28,6 +30,10 @@ K         kick
 L         block (hold)
 SPACE     special — needs a full meter
 R         rematch, on the winner screen
+N         new opponent, on the winner screen
+
+Character select: arrows move, Enter picks, Esc goes back.
+Touch: tap a fighter to read their card, tap again to pick.
 ```
 
 Rebinding lives in `src/input/keymap.ts`. The chain is
@@ -52,7 +58,10 @@ src/
 │   ├── moves.ts            ALL frame data and tuning constants
 │   └── CombatSystem.ts     hitboxes, hurtboxes, damage, knockback, block, parry
 ├── characters/
-│   ├── Sam.ts / Dario.ts   character definitions (stats, colours, specials)
+│   ├── roster.ts           the fighter id list; FighterId is derived from it
+│   ├── index.ts            id -> def, random pairs, grouped photo credits
+│   ├── Sam.ts, Dario.ts, Trump.ts, Elon.ts, Zuck.ts, Cook.ts
+│   │                       character definitions (stats, colours, specials, lines, photo credit)
 │   ├── Fighter.tsx         Rapier capsule + bone rig
 │   ├── rig/                the procedural humanoid skeleton
 │   └── animations/         clip library + AnimationMixer wrapper
@@ -61,7 +70,8 @@ src/
 ├── state/gameStore.ts      zustand: phase, health bars, clock, announcements
 ├── effects/                pooled impact particles + shockwave
 ├── audio/AudioManager.ts   every sound: CC0 samples, synth fallback
-└── components/             menu, character select, HUD, countdown, winner screen
+└── components/             menu, two-step character select, loading card, HUD,
+                            countdown, winner screen
 ```
 
 ### Four kinds of state, on purpose
@@ -124,22 +134,33 @@ model-agnostic.
 
 ### The faces
 
-Both fighters are real likenesses, and everything they wear comes from one pair
-of photographs: a 512² face texture for the DOM UI and the fallback head, and a
+Every fighter is a real likeness, and everything they wear comes from one
+photograph each: a 512² face texture for the DOM UI and the fallback head, and a
 3D head model (next section) reconstructed from the same shot. The sources are
-freely-licensed press photographs — Sam Altman by Steve Jurvetson, Dario Amodei
-by TechCrunch, both **CC BY 2.0** from Wikimedia Commons.
+all on Wikimedia Commons:
+
+| fighter | photographer | licence |
+|---|---|---|
+| Sam | Steve Jurvetson | CC BY 2.0 |
+| Dario | TechCrunch | CC BY 2.0 |
+| Donald | Shealah Craighead (White House official portrait) | public domain |
+| Elon | Trevor Cokley (U.S. Air Force) | public domain |
+| Mark | Anthony Quintano | CC BY 2.0 |
+| Tim | Christophe Licoppe (European Commission) | CC BY 4.0 |
+
+None is CC BY-SA, so no derived file carries ShareAlike.
 
 `scripts/build-faces.py` downloads the originals, cuts them to the crop boxes
 recorded in that file, grades them so two photos shot in two different rooms
 look like one game, and writes `public/faces/`:
 
 ```bash
-python3 scripts/build-faces.py     # needs Pillow; re-run after changing a crop
+python3 scripts/build-faces.py            # needs Pillow; re-run after changing a crop
+python3 scripts/build-faces.py elon cook  # just these
 ```
 
 It also prints the skin and hair tones it sampled off each finished face, which
-are the hex values in `characters/Sam.ts` and `characters/Dario.ts` — that is
+are the hex values in each `characters/<Name>.ts`. That is
 what keeps a fighter's neck and forearms matching their own head rather than a
 guessed swatch.
 
@@ -153,17 +174,30 @@ The head is the one part of a fighter that is not procedural: it is a real
 `scripts/build-heads.py`.
 
 ```bash
-python3 scripts/build-heads.py              # process (free, local, offline)
-python3 scripts/build-heads.py --preview    # + render a four-sided check sheet
-python3 scripts/build-heads.py --regenerate # re-run Tripo, spends credits
+python3 scripts/build-heads.py                    # process every cached head (free, local)
+python3 scripts/build-heads.py --preview          # + render a four-sided check sheet
+python3 scripts/build-heads.py --photos           # write the crops Tripo would get (free)
+python3 scripts/build-heads.py elon --regenerate  # re-run Tripo for ONE fighter, spends credits
 ```
 
 The pipeline is deliberately split at the expensive step. Tripo image-to-3D
 turns the head crop into a mesh and its conversion task decimates it to 5k
 triangles with the UVs intact — that costs credits, so its output is kept in
 `assets/source/heads/` and reused. Like everything else in `assets/source/` it
-is git-ignored, so a fresh clone spends credits once (`--regenerate`) and never
-again. Everything downstream of it is local, deterministic and free to re-run:
+is git-ignored, so a fresh clone spends credits once (`--regenerate --all`) and
+never again. A bare `--regenerate` with no fighter named refuses to run, and a head
+with no cached output is skipped rather than silently generated.
+
+**Status:** only Sam and Dario have head models so far. Donald, Elon, Mark and Tim
+have their crops set (`--photos`), but generation is waiting on Tripo credits (the
+balance was 0 when they were added, on both keys). Tripo also **rejected
+Donald's photo outright** under its content policy (`code 2008`) before checking the
+balance, so his head may never be generatable there, and he may keep the fallback
+head for good. To use a different key from `.env`, set
+`TRIPO_KEY_NAME=TRIPO_API_KEY_2` when running the script. Until then they wear the blocky fallback head
+with their face photo, and `hasHead: false` on their defs stops the loader from
+requesting a GLB that isn't there. Their `neck_cut`/`neck_tilt` are starting values
+to tune with `--preview` once a mesh exists. Everything downstream of it is local, deterministic and free to re-run:
 
 1. yaw the mesh so the face looks down +Z, like the rest of the rig
 2. cut the shoulders off along a *tilted* neck plane — a flat cut high enough to
@@ -204,8 +238,14 @@ Two things make it read as the right person rather than a blob on a body:
 Loading is asynchronous and failure is not fatal: `rig/heads.ts` resolves to
 `null` rather than rejecting, and a fighter whose model is missing keeps the
 blocky fallback head — a box with the face texture on its two side faces (the
-sides, for the same profile reason as above). `Game.tsx` warms both models at
-startup, so in practice the fallback is never seen.
+sides, for the same profile reason as above).
+
+Heads are not preloaded at startup any more. With 6+ fighters at ~200–310 kB
+a head, that would spend most of a phone's first load on faces nobody picked.
+Instead, picking a matchup puts the game in the `LOADING` phase: a matchup card
+shows while only that pair's heads are fetched, and the countdown starts once
+both have landed or failed (capped at 8 seconds). A rematch reuses the cached
+heads and skips straight to the countdown.
 
 ### The gloves and shoes
 
@@ -289,7 +329,12 @@ untouched.
 This is the constraint to respect if you touch any of it. CC BY allows the crop,
 the grade, the 3D reconstruction and commercial use, but the attribution has to
 travel with the game. It is in `public/faces/CREDITS.md`,
-`public/models/CREDITS.md` and, most importantly, on the main menu.
+`public/models/CREDITS.md` and, most importantly, on the main menu. The menu line
+is built from each def's `photo` field and grouped by licence, so a fighter
+without a credit doesn't compile. Public domain photos owe nothing, but they
+are credited anyway. A CC BY-SA photo would make that fighter's face and head
+CC BY-SA too. `build-faces.py` and `build-heads.py` note that in the CREDITS
+files automatically, but prefer a CC BY or public domain photo when one is usable.
 
 It covers the faces and the heads only. `glove.glb` and `shoe.glb` are generated
 from text and derive from no photograph, so nothing is owed on them — do not
@@ -349,12 +394,67 @@ movement → punch → hit detection → damage → knockback → health → KO 
 ```
 
 It checks that punches damage and knock back, that blocking reduces damage to chip,
-that a kick can floor someone and they get back up, that both specials work
-(including Dario's parry-into-counter), and that two AIs reliably fight to a
-knockout inside the target match length.
+that a kick can floor someone and they get back up, that every fighter's special
+works (grouped by kind: strike specials land and floor, counters absorb a punch and
+punish it), and that AI-vs-AI matches across every pairing reliably end in a
+knockout.
 
-Balance sanity as of writing: 40 AI-vs-AI matches ran 21/19, every one decisive,
-23–64 seconds — inside the plan's 30s–2min window.
+`bun run balance` runs an AI-vs-AI round-robin over every pair (200 matches a
+pairing by default, alternating sides) and exits non-zero if any pairing lands
+outside 35–65% or any fighter wins more than 60% overall. As of the six-fighter
+roster, at 300 matches a pairing (row's win rate against column):
+
+```
+          sam dario trump  elon  zuck  cook   overall
+sam         -   49%   48%   51%   45%   50%    49%
+dario     51%     -   57%   52%   53%   55%    53%
+trump     52%   43%     -   54%   51%   47%    49%
+elon      49%   48%   46%     -   56%   48%    49%
+zuck      55%   47%   49%   44%     -   48%    49%
+cook      50%   45%   53%   52%   52%     -    50%
+
+length: median 24.2s  range 11.4-62.0s  · every match decisive
+```
+
+Every pairing is inside 40–60%. The stats were tuned with one fact in mind:
+they are not worth the same. Measured by moving one stat ±20 in a mirror match,
+**defense and aggression swing the win rate by ~±12 points, attack by ~±6, and
+speed by ~±2**. So equal stat totals do not mean equal fighters, and the fast
+fighters have higher totals than the tanks.
+
+One known gap: the AI-vs-AI median is ~24s, under the plan's 30s floor. It was
+the same before the roster grew (Sam vs Dario measured ~24s on the unchanged
+code), and it is short in the same direction for every pairing, so it is a
+shared frame-data question (`combat/moves.ts`) rather than a per-fighter one.
+It has been left alone, not tuned around.
+
+### Adding a fighter
+
+1. **Photo.** Find a near-frontal, evenly lit, unobstructed photo on Wikimedia
+   Commons: public domain or CC BY preferred, CC BY-SA only if nothing else works.
+   Note the file, author and licence.
+2. **Face.** Add a `Face(...)` to `scripts/build-faces.py` (crop as fractions of the
+   source, `exposure`, `skin_at`, `hair_at`), run
+   `python3 scripts/build-faces.py <id>`, and compare `public/faces/<id>.webp` with
+   the others. It should look like the same room.
+3. **Head.** Add a `Head(...)` to `scripts/build-heads.py` with a wider crop that
+   includes all the hair. Check it with `--photos`, then run
+   `python3 scripts/build-heads.py <id> --regenerate` (one generation plus one
+   decimation of Tripo credits). Tune `neck_cut`/`neck_tilt` with `--preview`,
+   which is free. The shipped GLB should be ≤ ~320 kB.
+4. **Def.** Add `<id>` to `FIGHTER_IDS` in `characters/roster.ts`, write
+   `characters/<Name>.ts` modelled on the others, and register it in
+   `characters/index.ts`. Fill in `special` (kind `strike` or `counter`, a
+   name, and optional `tuning`), `colors` (the printed skin/hair, plus a primary
+   no other fighter uses), four `koLines`, optional `bigHitLines`/`specialLines`,
+   `photo`, and `hasHead`. Jokes target the persona or the company. No fake
+   quotes, no politics with teeth, nothing about family, health, religion or
+   ethnicity. No CSS is needed.
+5. **Check.** Run `bun run build`, `bun run sim` and `bun run balance`. Tune `stats`
+   and `special.tuning` until the round-robin passes (see the weights above).
+   Then pick the new fighter at desktop and phone widths.
+6. **Credits.** The face and head scripts rewrite both CREDITS files. The menu
+   line updates itself from `photo`. Update the table under "The faces".
 
 ### Poking at a live fight
 
