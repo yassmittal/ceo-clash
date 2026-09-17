@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { FighterId } from "@/game/types";
+import { CHARACTERS } from "@/characters";
 
 /**
  * The fighters' 3D heads.
@@ -31,6 +32,9 @@ const cache = new Map<FighterId, Promise<HeadModel | null>>();
 export function loadHead(id: FighterId): Promise<HeadModel | null> {
   const hit = cache.get(id);
   if (hit) return hit;
+  // No model built for this fighter yet: go straight to the blocky head rather
+  // than asking the server for a file that is known not to exist.
+  if (!CHARACTERS[id].hasHead) return Promise.resolve(null);
 
   const pending = loader
     .loadAsync(`${import.meta.env.BASE_URL}models/${id}-head.glb`)
@@ -60,11 +64,17 @@ export function loadHead(id: FighterId): Promise<HeadModel | null> {
 }
 
 /**
- * Warms both heads. The arena is mounted for the whole session and the menu is
- * drawn over it, so calling this at startup means the models are decoded and
- * uploaded long before anyone reaches a fight and nothing ever pops in.
+ * Fetches and decodes the given heads, resolving once all of them have either
+ * loaded or failed (a failure is still a null, never a rejection) — or once
+ * `timeoutMs` has passed, so a stalled request degrades to the blocky head
+ * instead of holding the match hostage.
+ *
+ * Only the pair that is about to fight is ever asked for. With a roster of six
+ * or more heads at ~200-310 kB each, warming every one at startup would spend
+ * most of a phone's first load on faces nobody picked.
  */
-export function preloadHeads(): void {
-  void loadHead("sam");
-  void loadHead("dario");
+export function preloadHeads(ids: readonly FighterId[], timeoutMs = 8000): Promise<void> {
+  const all = Promise.all(ids.map(loadHead)).then(() => undefined);
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+  return Promise.race([all, timeout]);
 }

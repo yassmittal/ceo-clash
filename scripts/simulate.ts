@@ -10,13 +10,13 @@
  *   bun run sim
  */
 import * as THREE from "three";
-import { CHARACTERS } from "../src/characters/index.ts";
+import { CHARACTER_LIST, CHARACTERS, FIGHTER_IDS } from "../src/characters/index.ts";
 import { FighterRuntime, fight } from "../src/game/runtime.ts";
 import { updateFighter } from "../src/game/FighterController.ts";
 import { updateCombat } from "../src/combat/CombatSystem.ts";
 import { FighterAI } from "../src/ai/FighterAI.ts";
 import { COMBAT, moveDuration, moveFor, specialFor } from "../src/combat/moves.ts";
-import { emptyIntent, type Intent } from "../src/game/types.ts";
+import { emptyIntent, type FighterId, type Intent } from "../src/game/types.ts";
 
 const STEP = 1 / 60;
 
@@ -50,10 +50,17 @@ interface Sim {
   bodyB: StubBody;
 }
 
-function makeSim(playerId: "sam" | "dario" = "sam"): Sim {
-  const other = playerId === "sam" ? "dario" : "sam";
+/** Every ordered pair of distinct fighters, for the checks that want variety. */
+const PAIRS: [FighterId, FighterId][] = FIGHTER_IDS.flatMap((a) =>
+  FIGHTER_IDS.filter((b) => b !== a).map((b): [FighterId, FighterId] => [a, b]),
+);
+
+/** Anyone other than `id`: the specials only need someone to hit. */
+const foeOf = (id: FighterId) => FIGHTER_IDS.find((other) => other !== id) ?? id;
+
+function makeSim(playerId: FighterId = FIGHTER_IDS[0], opponentId: FighterId = foeOf(playerId)): Sim {
   const a = new FighterRuntime(CHARACTERS[playerId], "player");
-  const b = new FighterRuntime(CHARACTERS[other], "opponent");
+  const b = new FighterRuntime(CHARACTERS[opponentId], "opponent");
   const bodyA = new StubBody();
   const bodyB = new StubBody();
   a.body = bodyA as never;
@@ -204,50 +211,62 @@ console.log("\nCEO CLASH — headless fight simulation\n");
 }
 
 // 5. Specials ---------------------------------------------------------------
-{
-  const sim = makeSim("sam");
-  sim.a.meter = 100;
-  const before = sim.b.health;
-  const seen = new Set<string>();
-  const watch = () => seen.add(sim.b.state);
-  closeAndStrike(sim, "special", { range: 1.2, onStep: watch });
-  check("GPT SMASH lands for heavy damage", before - sim.b.health > 18,
-    `${(before - sim.b.health).toFixed(1)} dmg`);
-  check("GPT SMASH floors the opponent", seen.has("KNOCKED_DOWN"), [...seen].join(","));
-  check("the special consumes the meter", sim.a.meter < 100, `${sim.a.meter.toFixed(0)}`);
-}
-
-{
-  // Dario parries an incoming punch and answers with the counter.
-  const sim = makeSim("dario");
-  sim.a.meter = 100;
-  for (let i = 0; i < 400 && distance(sim) > 1.3; i++) {
-    const intent = emptyIntent();
-    intent.moveZ = 1;
-    step(sim, intent, emptyIntent());
+// Each special kind is one mechanic shared by several fighters, but a fighter
+// can retune its own copy, so every fighter's special is checked — grouped by
+// the kind it uses.
+for (const kind of ["strike", "counter"] as const) {
+  const users = CHARACTER_LIST.filter((d) => d.special.kind === kind);
+  if (users.length === 0) {
+    check(`some fighter uses a ${kind} special`, false);
+    continue;
   }
-  const start = emptyIntent();
-  start.special = true;
-  step(sim, start, emptyIntent()); // Dario braces
-  const attack = emptyIntent();
-  attack.punch = true;
-  step(sim, emptyIntent(), attack); // Sam swings into the parry
-  const before = sim.b.health;
-  for (let i = 0; i < 120; i++) step(sim, emptyIntent(), emptyIntent());
-  check("CLAUDE COUNTER punishes the attacker", before - sim.b.health > 18,
-    `${(before - sim.b.health).toFixed(1)} dmg`);
-  check("the parry absorbs the incoming hit", sim.a.health > 95,
-    `defender at ${sim.a.health.toFixed(1)} hp`);
+  for (const def of users) {
+    const name = `${def.special.name} (${def.id})`;
+    if (kind === "strike") {
+      const sim = makeSim(def.id);
+      sim.a.meter = 100;
+      const before = sim.b.health;
+      const seen = new Set<string>();
+      const watch = () => seen.add(sim.b.state);
+      closeAndStrike(sim, "special", { range: 1.2, onStep: watch });
+      check(`${name} lands for heavy damage`, before - sim.b.health > 18,
+        `${(before - sim.b.health).toFixed(1)} dmg`);
+      check(`${name} floors the opponent`, seen.has("KNOCKED_DOWN"), [...seen].join(","));
+      check(`${name} consumes the meter`, sim.a.meter < 100, `${sim.a.meter.toFixed(0)}`);
+    } else {
+      // Parries an incoming punch and answers with the counter.
+      const sim = makeSim(def.id);
+      sim.a.meter = 100;
+      for (let i = 0; i < 400 && distance(sim) > 1.3; i++) {
+        const intent = emptyIntent();
+        intent.moveZ = 1;
+        step(sim, intent, emptyIntent());
+      }
+      const start = emptyIntent();
+      start.special = true;
+      step(sim, start, emptyIntent()); // braces
+      const attack = emptyIntent();
+      attack.punch = true;
+      step(sim, emptyIntent(), attack); // the opponent swings into the parry
+      const before = sim.b.health;
+      for (let i = 0; i < 120; i++) step(sim, emptyIntent(), emptyIntent());
+      check(`${name} punishes the attacker`, before - sim.b.health > 18,
+        `${(before - sim.b.health).toFixed(1)} dmg`);
+      check(`${name} absorbs the incoming hit`, sim.a.health > 95,
+        `defender at ${sim.a.health.toFixed(1)} hp`);
+    }
+  }
 }
 
 // 6. Full AI-vs-AI matches reach a KO ---------------------------------------
 {
   // Combat is stochastic, so sample rather than trusting a single match.
-  const ROUNDS = 9;
+  // Rotates through every pairing, so no one fighter's AI hides the others.
+  const ROUNDS = Math.max(9, PAIRS.length);
   const lengths: number[] = [];
   let decisive = 0;
   for (let round = 0; round < ROUNDS; round++) {
-    const sim = makeSim();
+    const sim = makeSim(...PAIRS[round % PAIRS.length]);
     const aiA = new FighterAI();
     const aiB = new FighterAI();
     aiA.reset();

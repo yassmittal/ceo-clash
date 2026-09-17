@@ -8,8 +8,10 @@
   --magenta: #ff3ce0;
   --amber: #ffd166;
   --danger: #ff4d5e;
-  --sam: #1f8cff;
-  --dario: #ff7a45;
+  /* Per-fighter colour. Set inline from def.colors.primary on whatever element
+     represents a fighter (tile, detail panel, portrait, name), so adding a
+     fighter needs no CSS at all. The fallback is only ever seen on "random". */
+  --fighter: var(--cyan);
   --ink: #04050e;
   --display: "Arial Black", "Helvetica Neue", Impact, system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
@@ -122,8 +124,11 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.7em;
   transform: rotate(-8deg);
 }
-.name-sam { color: var(--sam); text-shadow: 0 0 24px rgba(31, 140, 255, 0.7); }
-.name-dario { color: var(--dario); text-shadow: 0 0 24px rgba(255, 122, 69, 0.7); }
+.versus-name {
+  color: var(--fighter);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--fighter) 70%, transparent);
+}
+.main-menu .versus { animation: slam 0.45s cubic-bezier(0.15, 1.4, 0.3, 1); }
 
 /* ---------------------------------------------------------- buttons */
 .btn {
@@ -159,32 +164,137 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ------------------------------------------------- character select */
-.select-grid {
-  display: flex;
-  gap: clamp(1rem, 3vw, 2.5rem);
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 0 1rem;
+.select-screen {
+  justify-content: flex-start;
+  gap: clamp(0.6rem, 2vh, 1.4rem);
+  padding: clamp(3rem, 7vh, 4.5rem) 1rem 1.2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.select-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.select-title { font-size: clamp(1.7rem, 5.5vw, 3.6rem); text-align: center; }
+
+.select-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: start;
+  width: min(100%, 980px);
 }
 
-.card {
-  width: min(38vw, 340px);
-  min-width: 240px;
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  background: linear-gradient(180deg, rgba(12, 16, 38, 0.9), rgba(4, 5, 14, 0.95));
-  padding: 1.4rem 1.4rem 1.1rem;
+/* The roster. Tiles are small on purpose so 6-8 fighters fit without a scroll. */
+.roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.7rem;
+  align-content: start;
+}
+.tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  cursor: pointer;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(12, 16, 38, 0.9), rgba(4, 5, 14, 0.95));
+  color: #fff;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.card:hover, .card:focus-visible {
-  transform: translateY(-8px) scale(1.02);
+.tile-name {
+  font-size: clamp(0.72rem, 1.4vw, 0.92rem);
+  letter-spacing: 0.06em;
+  padding: 0.45em 0.3em 0.5em;
+  text-align: center;
+  transform: skewX(-7deg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile:hover, .tile:focus-visible, .tile--active {
+  border-color: var(--fighter);
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--fighter) 38%, transparent);
   outline: none;
 }
-.card--sam:hover, .card--sam:focus-visible { border-color: var(--sam); box-shadow: 0 18px 60px rgba(31,140,255,.35); }
-.card--dario:hover, .card--dario:focus-visible { border-color: var(--dario); box-shadow: 0 18px 60px rgba(255,122,69,.35); }
+.tile--active { transform: translateY(-4px); }
+.tile--active .tile-name { color: var(--fighter); }
+.tile-random-mark, .detail-random-mark {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  color: var(--amber);
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 8px, transparent 8px 16px);
+  text-shadow: 3px 0 var(--magenta), -3px 0 var(--cyan);
+}
+.tile--random { --fighter: var(--amber); }
+
+/* The detail panel for the highlighted tile. */
+.detail {
+  border: 2px solid color-mix(in srgb, var(--fighter) 70%, transparent);
+  background: linear-gradient(180deg, rgba(12, 16, 38, 0.92), rgba(4, 5, 14, 0.96));
+  box-shadow: 0 18px 60px color-mix(in srgb, var(--fighter) 22%, transparent);
+  padding: 1.1rem 1.2rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.detail--random { --fighter: var(--amber); }
+.detail--random .detail-random-mark { width: 45%; align-self: center; }
+.detail-top { display: flex; flex-direction: column; gap: 0.8rem; }
+.detail-id { display: flex; flex-direction: column; gap: 0.3rem; }
+.detail-name {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  letter-spacing: -0.02em;
+  transform: skewX(-7deg);
+  color: var(--fighter);
+}
+.detail-stats { display: flex; flex-direction: column; gap: 0.3rem; }
+.detail-special { display: flex; flex-direction: column; gap: 0.2rem; }
+.detail-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.detail-actions .btn {
+  font-size: clamp(0.78rem, 1.3vw, 0.95rem);
+  letter-spacing: 0.12em;
+  padding: 0.7em 0.9em;
+  flex: 1 1 0;
+  white-space: nowrap;
+}
+.detail .portrait--card { aspect-ratio: 16 / 9; }
+.detail .role, .loading .role {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.28em;
+  color: rgba(255,255,255,.5);
+  text-transform: uppercase;
+}
+.detail .tagline {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,.7);
+  margin: 0;
+}
+.detail .special-name {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+}
+.select-foot { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.select-hint { margin: 0; }
+
+/* The loading card between select and the countdown. */
+.loading-pair {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 5vw, 3.5rem);
+  font-size: clamp(1.3rem, 4vw, 2.4rem);
+  text-transform: uppercase;
+}
+.loading-side { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.loading-side .versus-name { transform: skewX(-7deg); }
+.loading .vs { color: var(--amber); font-size: 0.7em; transform: skewX(-7deg) rotate(-8deg); }
+.loading-label { animation: readyPulse 0.9s ease-in-out infinite; }
 
 /* The face photo, shared by the select cards and the winner screen. The wash
    and the scanlines are what stop it reading as a stock headshot dropped into
@@ -239,38 +349,12 @@ button { font-family: inherit; cursor: pointer; }
   border-width: 3px;
   animation: slam 0.5s cubic-bezier(0.15, 1.4, 0.3, 1);
 }
-.portrait--sam { box-shadow: 0 10px 34px rgba(31, 140, 255, 0.28); }
-.portrait--dario { box-shadow: 0 10px 34px rgba(255, 122, 69, 0.28); }
-.card:hover .portrait img, .card:focus-visible .portrait img {
+.portrait--card, .portrait--hero {
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--fighter) 28%, transparent);
+}
+.portrait--tile { width: 100%; aspect-ratio: 1 / 1; border-width: 0; }
+.tile--active .portrait img, .tile:hover .portrait img {
   filter: contrast(1.14) saturate(1.05) brightness(1.08);
-}
-
-.card h2 {
-  margin: 0;
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
-  letter-spacing: -0.02em;
-  transform: skewX(-7deg);
-}
-.card .role {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.28em;
-  color: rgba(255,255,255,.5);
-  text-transform: uppercase;
-}
-.card .tagline {
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  line-height: 1.5;
-  color: rgba(255,255,255,.7);
-  text-transform: none;
-  letter-spacing: 0;
-  min-height: 2.2em;
-}
-.card .special-name {
-  font-size: 0.95rem;
-  letter-spacing: 0.12em;
-  color: var(--amber);
 }
 
 .disclaimer a { color: rgba(255,255,255,.55); }
@@ -284,7 +368,7 @@ button { font-family: inherit; cursor: pointer; }
   color: rgba(255,255,255,.55);
 }
 .stat-track { height: 8px; background: rgba(255,255,255,.1); overflow: hidden; }
-.stat-fill { height: 100%; transition: width 0.5s cubic-bezier(0.2, 0.9, 0.2, 1); }
+.stat-fill { height: 100%; background: var(--fighter); transition: width 0.5s cubic-bezier(0.2, 0.9, 0.2, 1); }
 
 /* ------------------------------------------------------------- HUD */
 .hud {
@@ -548,21 +632,62 @@ button { font-family: inherit; cursor: pointer; }
 .disclaimer {
   position: absolute;
   bottom: 0.7rem;
-  line-height: 1.9;
+  line-height: 1.8;
   left: 50%;
   transform: translateX(-50%);
+  width: min(100%, 980px);
   font-family: var(--mono);
   font-size: 0.55rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   color: rgba(255,255,255,.3);
   text-align: center;
   padding: 0 1rem;
   z-index: 22;
 }
+/* A phone has no spare height to float the credits over, so the menu scrolls
+   and the credits sit in the flow under everything else. They stay on the
+   menu either way: that is the attribution that travels with the game. */
+@media (max-width: 760px), (max-height: 560px) {
+  .main-menu {
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding: 4.5rem 0 1rem;
+    gap: 1.1rem;
+  }
+  .main-menu .disclaimer {
+    position: static;
+    transform: none;
+    margin-top: auto;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 760px) {
+  .select-body { grid-template-columns: 1fr; }
+  /* Four across fits the whole roster in two short rows on a phone, leaving
+     the panel below in thumb reach. */
+  .roster { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; }
+  .tile--active { transform: none; }
+  .detail { padding: 0.8rem 0.9rem 0.9rem; gap: 0.6rem; }
+  .detail-top { flex-direction: row; align-items: center; }
+  .detail-top .portrait--card { width: 34%; aspect-ratio: 1 / 1; }
+  .detail-stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0.8rem; }
+  .detail-stats .stat { grid-template-columns: 4.6rem 1fr; }
+  .detail-actions { flex-wrap: nowrap; }
+  .detail-actions .btn { min-height: 48px; padding: 0.6em 0.5em; letter-spacing: 0.08em; }
+  .select-screen { padding-top: 3.6rem; scrollbar-width: none; }
+  .select-title { font-size: clamp(1.4rem, 7vw, 2rem); }
+  .select-hint { display: none; }
+}
 
 @media (max-width: 640px) {
-  .card { width: 88vw; }
+  /* The corner buttons would sit on the timer and the CPU's name. */
+  .hud { padding-top: 2.8rem; }
+  .bar-name { white-space: nowrap; }
   .controls-strip { font-size: 0.52rem; }
   /* The corner row runs out of room first — the mark alone still reads. */
   .label-wide { display: none; }
 }
+
+.select-foot .btn { font-size: clamp(0.8rem, 1.4vw, 1rem); padding: 0.55em 1.8em; }

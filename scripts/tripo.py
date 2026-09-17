@@ -16,6 +16,7 @@ in here spends credits except `await_task`.
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.request
 from pathlib import Path
@@ -30,14 +31,17 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
 
 
 def api_key() -> str:
+    # Which .env entry to use. Defaults to TRIPO_API_KEY; point it at another
+    # account's key with e.g. `TRIPO_KEY_NAME=TRIPO_API_KEY_2 python3 ...`.
+    name = os.environ.get("TRIPO_KEY_NAME", "TRIPO_API_KEY")
     for line in (ROOT / ".env").read_text().splitlines():
-        if line.startswith("TRIPO_API_KEY="):
+        if line.startswith(f"{name}="):
             # .env values are sometimes quoted and sometimes not. Sending the
             # quotes along produces a plain "Authentication failed" that looks
             # exactly like an expired key, so strip them here rather than
             # debugging it a second time.
             return line.split("=", 1)[1].strip().strip("\"'")
-    raise SystemExit("TRIPO_API_KEY missing from .env")
+    raise SystemExit(f"{name} missing from .env")
 
 
 def post(path: str, payload: dict, key: str) -> dict:

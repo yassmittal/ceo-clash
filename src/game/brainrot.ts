@@ -5,7 +5,21 @@
  * lines, pulled at random, is the whole system.
  */
 
+import type { CharacterDef } from "@/game/types";
+
 const pick = <T,>(list: readonly T[]) => list[(Math.random() * list.length) | 0];
+
+/**
+ * A fighter's own line about half the time, the shared pool otherwise. The
+ * shared pools stay the backbone so a signature line is a treat, not a loop.
+ *
+ * Tone rule for every line in here and on the defs: jokes land on the public
+ * persona or the company — shipping, keynotes, rockets, deals, the metaverse.
+ * No fake quotes passed off as real, no politics with teeth, nothing about
+ * family, health, religion or ethnicity.
+ */
+const signature = (own: readonly string[] | undefined, shared: readonly string[]) =>
+  own && own.length > 0 && Math.random() < 0.5 ? pick(own) : pick(shared);
 
 export const BIG_HIT_LINES = [
   "BENCHMARKED 💀",
@@ -15,6 +29,8 @@ export const BIG_HIT_LINES = [
   "EVAL FAILED",
   "LATENCY SPIKE",
   "RATE LIMITED",
+  "PATCH NOTES: YOU",
+  "404: GUARD NOT FOUND",
 ] as const;
 
 export const KNOCKDOWN_LINES = [
@@ -41,12 +57,12 @@ export const KO_LINES = [
 
 export const TIMEOUT_LINE = "COMPUTE BUDGET EXHAUSTED";
 
-export const bigHitLine = () => pick(BIG_HIT_LINES);
+export const bigHitLine = (by?: CharacterDef) => signature(by?.bigHitLines, BIG_HIT_LINES);
 export const knockdownLine = () => pick(KNOCKDOWN_LINES);
 export const blockLine = () => pick(BLOCK_LINES);
-export const specialLine = () => pick(SPECIAL_LINES);
+export const specialLine = (by?: CharacterDef) => signature(by?.specialLines, SPECIAL_LINES);
 export const counterLine = () => pick(COUNTER_LINES);
-export const koLine = () => pick(KO_LINES);
+export const koLine = (by?: CharacterDef) => signature(by?.koLines, KO_LINES);
 
 /** Rotating nonsense for the arena's jumbotron. */
 export const ARENA_TICKER = [
@@ -56,4 +72,11 @@ export const ARENA_TICKER = [
   "H100 GIVEAWAY AT HALFTIME",
   "PLEASE DO NOT FEED THE AGENTS",
   "THIS ARENA IS ALSO A DATA CENTER",
+  "TONIGHT'S UNDERCARD: SIX CEOS, ZERO BOARD APPROVAL",
+  "CONCESSIONS NOW ACCEPT DOGECOIN, APPLE PAY AND VIBES",
+  "RINGSIDE SEATS SOLD AS A SUBSCRIPTION",
+  "THE METAVERSE SECTION IS STILL EMPTY",
+  "NEXT BOUT DELAYED FOR ONE MORE THING",
+  "FIGHT CARD SUBJECT TO A HUGE RENEGOTIATION",
+  "ROCKET-POWERED JUMBOTRON: RUD PENDING",
 ] as const;

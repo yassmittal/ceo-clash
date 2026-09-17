@@ -2,16 +2,19 @@
 """
 Builds the fighters' face textures from freely-licensed press photos.
 
-Both source photos are CC BY 2.0 from Wikimedia Commons, so this is a legitimate
-derivative as long as the attribution in public/faces/CREDITS.md ships with the
-game. Nothing here is checked against a face detector — the crop boxes below were
+Every source is a public domain, CC BY or CC BY-SA photo from Wikimedia Commons
+(recorded per face below), so this is a legitimate derivative as long as the
+attribution in public/faces/CREDITS.md ships with the game. A CC BY-SA source
+makes the derived face and head CC BY-SA too; prefer a CC BY or public domain
+photo of the same person when one is usable. Nothing here is checked against a face detector — the crop boxes below were
 eyeballed once against the source images and are stored as fractions of the
 source, so they survive a re-download at any resolution.
 
-    python3 scripts/build-faces.py
+    python3 scripts/build-faces.py            # every face
+    python3 scripts/build-faces.py elon cook  # just these
 
-Writes public/faces/{sam,dario}.webp and prints the skin/hair colours it sampled,
-which are the numbers that live in src/characters/{Sam,Dario}.ts.
+Writes public/faces/<id>.webp and prints the skin/hair colours it sampled,
+which are the numbers that live in src/characters/<Name>.ts.
 """
 
 from __future__ import annotations
@@ -39,8 +42,9 @@ class Face:
     # Commons file name, without the "File:" prefix.
     commons_file: str
     author: str
+    # Printed as-is. "Public domain" is recognised as needing no licence link.
     license: str
-    license_url: str
+    license_url: str | None
     source_url: str
     # Crop box as fractions of the source image (left, top, right, bottom).
     # Framed a little above the brow so a sliver of hair meets the rig's hair
@@ -81,6 +85,54 @@ FACES = [
         exposure=0.90,
         skin_at=(0.50, 0.86),
         hair_at=(0.16, 0.14),
+    ),
+    Face(
+        id="trump",
+        commons_file="Donald Trump official portrait.jpg",
+        author="Shealah Craighead (The White House)",
+        license="Public domain",
+        license_url=None,
+        source_url="https://commons.wikimedia.org/wiki/File:Donald_Trump_official_portrait.jpg",
+        crop=(0.27, 0.20, 0.69, 0.53),
+        exposure=0.94,
+        skin_at=(0.72, 0.60),
+        hair_at=(0.50, 0.04),
+    ),
+    Face(
+        id="elon",
+        commons_file="Elon Musk Colorado 2022.jpg",
+        author="Trevor Cokley (U.S. Air Force)",
+        license="Public domain",
+        license_url=None,
+        source_url="https://commons.wikimedia.org/wiki/File:Elon_Musk_Colorado_2022.jpg",
+        crop=(0.446, 0.135, 0.600, 0.345),
+        exposure=1.00,
+        skin_at=(0.30, 0.50),
+        hair_at=(0.60, 0.10),
+    ),
+    Face(
+        id="zuck",
+        commons_file="Mark Zuckerberg F8 2019 Keynote (32830578717) (cropped).jpg",
+        author="Anthony Quintano",
+        license="CC BY 2.0",
+        license_url="https://creativecommons.org/licenses/by/2.0/",
+        source_url="https://commons.wikimedia.org/wiki/File:Mark_Zuckerberg_F8_2019_Keynote_(32830578717)_(cropped).jpg",
+        crop=(0.19, 0.12, 0.81, 0.62),
+        exposure=0.90,
+        skin_at=(0.72, 0.60),
+        hair_at=(0.20, 0.05),
+    ),
+    Face(
+        id="cook",
+        commons_file="Visit of Tim Cook to the European Commission - P061904-946789.jpg",
+        author="Christophe Licoppe (European Commission)",
+        license="CC BY 4.0",
+        license_url="https://creativecommons.org/licenses/by/4.0/",
+        source_url="https://commons.wikimedia.org/wiki/File:Visit_of_Tim_Cook_to_the_European_Commission_-_P061904-946789.jpg",
+        crop=(0.12, 0.20, 0.80, 0.68),
+        exposure=0.92,
+        skin_at=(0.72, 0.60),
+        hair_at=(0.20, 0.10),
     ),
 ]
 
@@ -177,9 +229,11 @@ def credits() -> None:
     lines = [
         "# Face texture credits",
         "",
-        "The fighters' faces are cropped from freely-licensed press photographs.",
-        "Both are used under CC BY 2.0, which permits derivative and commercial use",
-        "**provided the attribution below is kept**. Regenerate with",
+        "The fighters' faces are cropped from public domain or freely-licensed",
+        "photographs on Wikimedia Commons. The licence of each is listed below. CC BY",
+        "permits derivative and commercial use **provided the attribution is",
+        "kept**. Public domain photos (US federal government works) carry no",
+        "obligation, but are credited anyway. Regenerate with",
         "`python3 scripts/build-faces.py`.",
         "",
     ]
@@ -189,11 +243,13 @@ def credits() -> None:
             "",
             f"- Source: [{f.commons_file}]({f.source_url})",
             f"- Author: {f.author}",
-            f"- License: [{f.license}]({f.license_url})",
+            f"- License: [{f.license}]({f.license_url})" if f.license_url else f"- License: {f.license}",
             "- Changes: cropped to the face, resized, exposure/contrast/saturation",
             "  adjusted, edges darkened.",
-            "",
         ]
+        if "BY-SA" in f.license:
+            lines.append(f"- ShareAlike: `{f.id}.webp` and `models/{f.id}-head.glb` are also {f.license}.")
+        lines.append("")
     lines += [
         "---",
         "",

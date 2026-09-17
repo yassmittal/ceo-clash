@@ -1,3 +1,4 @@
+import type React from "react";
 import type { CharacterDef } from "@/game/types";
 
 /**
@@ -14,14 +15,18 @@ export function Portrait({
   size = "card",
 }: {
   def: CharacterDef;
-  size?: "card" | "hero";
+  size?: "card" | "hero" | "tile";
 }) {
   return (
-    <div className={`portrait portrait--${size} portrait--${def.id}`}>
+    <div
+      className={`portrait portrait--${size}`}
+      style={{ "--fighter": def.colors.primary } as React.CSSProperties}
+    >
       <img
         src={`${import.meta.env.BASE_URL}faces/${def.id}.webp`}
-        alt={`${def.name}, the ${def.title.toLowerCase()}`}
+        alt={`${def.name}, ${def.title.toLowerCase()}`}
         draggable={false}
+        decoding="async"
       />
       <span className="portrait-wash" style={{ background: def.colors.primary }} />
       <span className="portrait-scan" />

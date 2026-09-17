@@ -12,6 +12,7 @@ export function WinnerScreen() {
   const opponentId = useGameStore((s) => s.opponentId);
   const rematch = useGameStore((s) => s.rematch);
   const goToMenu = useGameStore((s) => s.goToMenu);
+  const goToSelect = useGameStore((s) => s.goToSelect);
 
   const def = CHARACTERS[winner === "player" ? playerId : opponentId];
 
@@ -22,13 +23,17 @@ export function WinnerScreen() {
         e.preventDefault();
         audio.click();
         rematch();
+      } else if (e.code === "KeyN") {
+        e.preventDefault();
+        audio.click();
+        goToSelect("opponent");
       } else if (e.code === "Escape") {
         goToMenu();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rematch, goToMenu]);
+  }, [rematch, goToMenu, goToSelect]);
 
   return (
     <div className="screen winner">
@@ -50,11 +55,20 @@ export function WinnerScreen() {
         >
           Rematch
         </button>
+        <button
+          className="btn btn--ghost"
+          onClick={() => {
+            audio.click();
+            goToSelect("opponent");
+          }}
+        >
+          New opponent
+        </button>
         <button className="btn btn--ghost" onClick={goToMenu}>
           Menu
         </button>
       </div>
-      <p className="hint">press R to run it back</p>
+      <p className="hint">R to run it back · N for a new opponent</p>
 
       {/* The end of a match is the one moment a player has time to be curious
           about how the thing works. */}

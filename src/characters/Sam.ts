@@ -8,7 +8,8 @@ export const SAM: CharacterDef = {
   name: "SAM",
   title: "THE SCALER",
   tagline: "Ships first. Reads the eval later.",
-  stats: { speed: 80, attack: 60, defense: 50, aggression: 80 },
+  hasHead: true,
+  stats: { speed: 70, attack: 70, defense: 64, aggression: 74 },
   special: {
     name: "GPT SMASH",
     kind: "strike",
@@ -26,5 +27,10 @@ export const SAM: CharacterDef = {
     "CONTEXT WINDOW DESTROYED",
     "SCALED. LITERALLY.",
     "TRAINING RUN TERMINATED",
-  ],
+  ],  photo: {
+    author: "Steve Jurvetson",
+    license: "CC BY 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Sam_Altman_speaking_at_TED_(cropped).jpg",
+  },
 };

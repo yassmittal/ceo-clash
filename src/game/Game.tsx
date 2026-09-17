@@ -30,12 +30,30 @@ export function Game() {
 
   useEffect(() => resetCamera(), [matchKey]);
 
-  // The arena is mounted for the whole session behind the menu, so fetching the
-  // head models now means they are ready long before anyone reaches a fight.
+  // The gloves and shoes are shared by everyone, so they are worth warming as
+  // soon as the arena mounts behind the menu.
   useEffect(() => {
-    preloadHeads();
     preloadGear();
   }, []);
+
+  // Heads are per fighter, so only the chosen pair is fetched, and only once
+  // select has locked them in. The store holds the match in LOADING until both
+  // have landed (or failed, which falls back to the blocky head), so nothing
+  // pops in during the countdown.
+  const phase = useGameStore((s) => s.phase);
+  useEffect(() => {
+    if (phase !== "LOADING") return;
+    let cancelled = false;
+    void preloadHeads([playerId, opponentId]).then(() => {
+      const store = useGameStore.getState();
+      if (cancelled || store.phase !== "LOADING" || store.matchKey !== matchKey) return;
+      store.setCountdown(3);
+      store.setPhase("COUNTDOWN");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, playerId, opponentId, matchKey]);
 
   // Dev-only bridge: lets you poke at the live fight from the browser console
   // (window.ceoClash.fight.opponent.health = 5) and is stripped from builds.

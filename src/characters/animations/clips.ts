@@ -460,8 +460,8 @@ function defeat(): THREE.AnimationClip {
   ]);
 }
 
-/** Sam: a wildly telegraphed overhead haymaker. */
-function gptSmash(): THREE.AnimationClip {
+/** The strike special: a wildly telegraphed overhead haymaker. */
+function strikeSpecial(): THREE.AnimationClip {
   return buildClip("SPECIAL", STANCE, [
     { t: 0, pose: {} },
     {
@@ -532,8 +532,8 @@ function gptSmash(): THREE.AnimationClip {
   ]);
 }
 
-/** Dario: a braced parry that answers with an elbow-driven rebuttal. */
-function claudeCounter(): THREE.AnimationClip {
+/** The counter special: a braced parry that answers with an elbow-driven rebuttal. */
+function counterSpecial(): THREE.AnimationClip {
   return buildClip("SPECIAL", STANCE, [
     { t: 0, pose: {} },
     {
@@ -647,6 +647,6 @@ export function buildClips(def: CharacterDef): THREE.AnimationClip[] {
     getUp(),
     victory(),
     defeat(),
-    def.special.kind === "counter" ? claudeCounter() : gptSmash(),
+    def.special.kind === "counter" ? counterSpecial() : strikeSpecial(),
   ];
 }

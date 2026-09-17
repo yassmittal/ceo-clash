@@ -176,7 +176,7 @@ export function applyHit(
   if (move.id === "special") {
     audio.heavy();
     spawnBurst("special", contact, 2.2);
-    store.announce(opts.guaranteed ? counterLine() : specialLine(), "big");
+    store.announce(opts.guaranteed ? counterLine() : specialLine(attacker.def), "big");
   } else if (knockdown) {
     audio.heavy();
     spawnBurst("heavy", contact, 1.6);
@@ -184,7 +184,7 @@ export function applyHit(
   } else {
     audio.hit(move.id === "kick" ? 1.4 : 1);
     spawnBurst("hit", contact, move.id === "kick" ? 1.2 : 0.9);
-    if (attacker.combo >= 3 || Math.random() < 0.18) store.announce(bigHitLine(), "hit");
+    if (attacker.combo >= 3 || Math.random() < 0.18) store.announce(bigHitLine(attacker.def), "hit");
   }
 
   if (knockdown) audio.knockdown();

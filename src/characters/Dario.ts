@@ -8,7 +8,8 @@ export const DARIO: CharacterDef = {
   name: "DARIO",
   title: "THE ALIGNER",
   tagline: "Blocks first. Asks questions never.",
-  stats: { speed: 60, attack: 70, defense: 80, aggression: 60 },
+  hasHead: true,
+  stats: { speed: 60, attack: 68, defense: 78, aggression: 60 },
   special: {
     name: "CLAUDE COUNTER",
     kind: "counter",
@@ -26,5 +27,10 @@ export const DARIO: CharacterDef = {
     "HALLUCINATION DETECTED",
     "100% INFERENCE. 0% SURVIVAL.",
     "AGENT FAILED",
-  ],
+  ],  photo: {
+    author: "TechCrunch",
+    license: "CC BY 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Dario_Amodei_at_TechCrunch_Disrupt_2023_01_(cropped_2).jpg",
+  },
 };

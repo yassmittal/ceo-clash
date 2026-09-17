@@ -56,9 +56,14 @@ export const KICK: MoveDef = {
   screenShake: 0.42,
 };
 
-export const GPT_SMASH: MoveDef = {
+/**
+ * The two special mechanics. Every fighter uses one of them: `special.kind` on
+ * the character def picks which, `special.name` renames it, and
+ * `special.tuning` nudges a few numbers (see specialFor).
+ */
+export const STRIKE_SPECIAL: MoveDef = {
   id: "special",
-  label: "GPT SMASH",
+  label: "SMASH",
   kind: "strike",
   anim: "SPECIAL",
   startup: 0.34,
@@ -80,9 +85,9 @@ export const GPT_SMASH: MoveDef = {
   screenShake: 1,
 };
 
-export const CLAUDE_COUNTER: MoveDef = {
+export const COUNTER_SPECIAL: MoveDef = {
   id: "special",
-  label: "CLAUDE COUNTER",
+  label: "COUNTER",
   kind: "counter",
   anim: "SPECIAL",
   /**
@@ -110,8 +115,32 @@ export const CLAUDE_COUNTER: MoveDef = {
   screenShake: 1,
 };
 
-export const specialFor = (c: CharacterDef): MoveDef =>
-  c.special.kind === "counter" ? CLAUDE_COUNTER : GPT_SMASH;
+const specials = new WeakMap<CharacterDef, MoveDef>();
+
+/**
+ * A fighter's special: the base move for its kind, renamed, with the def's
+ * tuning overrides applied. Built once per def and cached, so the combat loop
+ * keeps getting the same object back every frame.
+ *
+ * Only `startup` of the frame data may move, and `active` absorbs the
+ * difference so the total still matches the SPECIAL clip's length.
+ */
+export function specialFor(c: CharacterDef): MoveDef {
+  const hit = specials.get(c);
+  if (hit) return hit;
+  const base = c.special.kind === "counter" ? COUNTER_SPECIAL : STRIKE_SPECIAL;
+  const t = c.special.tuning ?? {};
+  const startup = t.startup ?? base.startup;
+  const move: MoveDef = {
+    ...base,
+    ...t,
+    label: c.special.name,
+    startup,
+    active: Math.max(0.04, base.active + base.startup - startup),
+  };
+  specials.set(c, move);
+  return move;
+}
 
 export const moveFor = (c: CharacterDef, id: MoveId): MoveDef =>
   id === "punch" ? PUNCH : id === "kick" ? KICK : specialFor(c);

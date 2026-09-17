@@ -22,7 +22,8 @@ export type GamePhase =
   | "KO"
   | "WINNER";
 
-export type FighterId = "sam" | "dario";
+import type { FighterId } from "@/characters/roster";
+export type { FighterId };
 export type Side = "player" | "opponent";
 
 export type FighterState =
@@ -111,12 +112,29 @@ export interface CharacterDef {
   /** Shown on the select screen — flavour only. */
   title: string;
   tagline: string;
+  /**
+   * Whether `public/models/<id>-head.glb` ships. False means the fighter wears
+   * the blocky face-textured head and the loader never requests a file that
+   * isn't there (no 404 in the console). Flip it when build-heads.py has
+   * produced the model.
+   */
+  hasHead: boolean;
   /** Raw design numbers from the plan (0-100). Tuning derives from these. */
   stats: { speed: number; attack: number; defense: number; aggression: number };
   special: {
     name: string;
+    /**
+     * Which of the two special mechanics this fighter uses. The frame data and
+     * the clip come from the kind; everything else here is presentation.
+     */
     kind: "strike" | "counter";
     description: string;
+    /**
+     * Optional per-fighter adjustments on top of the kind's base frame data in
+     * combat/moves.ts. Deliberately a short list: the numbers that change how a
+     * special feels without changing how it works or how long its clip runs.
+     */
+    tuning?: Partial<Pick<MoveDef, "damage" | "startup" | "lunge" | "knockback" | "reach">>;
   };
   colors: {
     primary: string;
@@ -130,6 +148,25 @@ export interface CharacterDef {
   };
   /** Silly lines shown when this character lands a KO. */
   koLines: string[];
+  /** Optional signature lines, mixed in with the shared pools in brainrot.ts. */
+  bigHitLines?: string[];
+  specialLines?: string[];
+  /**
+   * Where the likeness came from. The menu builds its attribution line from
+   * this, so a new fighter cannot ship without their photographer credited.
+   * Kept in step with scripts/build-faces.py, which is where the photo is cut.
+   */
+  photo: PhotoCredit;
+}
+
+export interface PhotoCredit {
+  author: string;
+  /** Short licence name as it should be printed, e.g. "CC BY 2.0". */
+  license: string;
+  /** Deed URL; omitted for public domain, which has none to link. */
+  licenseUrl?: string;
+  /** The Commons file page. */
+  sourceUrl: string;
 }
 
 /** What a controller (human or AI) wants to do this frame. Both produce this. */
